@@ -1,0 +1,65 @@
+[project]
+name = "parallel-platform"
+version = "0.1.0"
+description = "Parallel: capture, reconstruct, prepare, simulate, compare, improve."
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "parallel-contracts",
+    "parallel-scene",
+    "parallel-metrics",
+    "parallel-engines",
+    "parallel-core",
+    "parallel-api",
+    "parallel-reconstruction",
+    "parallel-simulation",
+    "parallel-results",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*", "workers/*"]
+
+[tool.uv.sources]
+parallel-contracts = { workspace = true }
+parallel-scene = { workspace = true }
+parallel-metrics = { workspace = true }
+parallel-engines = { workspace = true }
+parallel-core = { workspace = true }
+parallel-api = { workspace = true }
+parallel-reconstruction = { workspace = true }
+parallel-simulation = { workspace = true }
+parallel-results = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/contracts/tests",
+    "packages/scene/tests",
+    "packages/metrics/tests",
+    "packages/engines/tests",
+    "packages/core/tests",
+    "services/api/tests",
+    "workers/reconstruction/tests",
+    "workers/simulation/tests",
+    "workers/results/tests",
+]
+markers = [
+    "engine(name): requires a real engine runtime; fails (not skips) when the runtime is missing unless PARALLEL_ALLOW_MISSING_ENGINES=1",
+    "slow: long-running integration test",
+]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]

@@ -1,0 +1,13 @@
+[project]
+name = "parallel-metrics"
+version = "0.1.0"
+description = "Defined metric calculations with documented formulas."
+requires-python = ">=3.12"
+dependencies = ["parallel-contracts", "numpy==2.5.4"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/parallel_metrics"]

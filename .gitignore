@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# Engine runtimes (created by scripts/setup_runtimes.sh)
+.runtimes/
+# Local development state (postgres cluster, redis, object storage)
+.dev/
+var/
+# Node
+node_modules/
+apps/web/dist/
+apps/web/test-results/
+apps/web/playwright-report/
+# OS / editors
+.DS_Store
+*.swp
+.env
