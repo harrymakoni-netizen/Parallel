@@ -43,6 +43,6 @@ def recovery_sweep() -> dict[str, int]:
 
 @celery_app.task(name=TASK_OPTIMISATION, acks_late=True)
 def run_optimisation(study_id: str) -> str:
-    from .optimisation import run_study
+    from parallel_core.optimisation import run_study
 
     return run_study(study_id)

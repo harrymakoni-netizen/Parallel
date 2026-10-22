@@ -162,7 +162,7 @@ def submit_run(
     assert scenario is not None
     if scenario.project_id != project.id:
         raise SubmissionError("scenario does not belong to this project", status=404)
-    if scenario_revision.origin != "manual" and scenario_revision.adopted_by is None:
+    if scenario_revision.origin == "ai" and scenario_revision.adopted_by is None:
         raise SubmissionError(
             "This scenario was drafted by the assistant and has not been adopted by a user.", status=409
         )
