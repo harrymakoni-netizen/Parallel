@@ -212,7 +212,12 @@ class TestPly:
         n = 10
         p = tmp_path / "g.ply"
         ply.write_gaussians(
-            p, RNG.normal(size=(n, 3)), np.zeros((n, 3)), np.zeros(n), np.full((n, 3), -3.0), np.tile([1, 0, 0, 0], (n, 1))
+            p,
+            RNG.normal(size=(n, 3)),
+            np.zeros((n, 3)),
+            np.zeros(n),
+            np.full((n, 3), -3.0),
+            np.tile([1, 0, 0, 0], (n, 1)),
         )
         h, _ = ply.read_vertices(p)
         assert h.is_gaussian_splat

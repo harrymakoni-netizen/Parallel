@@ -1,0 +1,6 @@
+# no-deps: JuPedSim's visualisation extras (PySide6, VTK, matplotlib) are not needed by the solver.
+jupedsim==1.4.2
+shapely==2.2.0
+numpy==2.5.4
+deprecated==1.2.18
+wrapt==1.17.3

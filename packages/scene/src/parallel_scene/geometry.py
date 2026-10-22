@@ -43,7 +43,11 @@ def validate_polygon(geom: PolygonGeom | MultiPolygonGeom, path: str, label: str
     poly = to_shapely(geom)
     if not poly.is_valid:
         reason = explain_validity(poly)
-        code = "self_intersection" if "Self-intersection" in reason or "Ring Self" in reason else "invalid_polygon"
+        code = (
+            "self_intersection"
+            if "Self-intersection" in reason or "Ring Self" in reason
+            else "invalid_polygon"
+        )
         issues.append(
             ValidationIssue(
                 severity="error",
@@ -54,7 +58,9 @@ def validate_polygon(geom: PolygonGeom | MultiPolygonGeom, path: str, label: str
             )
         )
     elif poly.area <= 0:
-        issues.append(ValidationIssue(severity="error", code="zero_area", message=f"{label} has zero area", path=path))
+        issues.append(
+            ValidationIssue(severity="error", code="zero_area", message=f"{label} has zero area", path=path)
+        )
     return issues
 
 

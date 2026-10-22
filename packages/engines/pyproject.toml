@@ -3,7 +3,7 @@ name = "parallel-engines"
 version = "0.1.0"
 description = "Engine adapters, capability records and isolated runtime runners."
 requires-python = ">=3.12"
-dependencies = ["parallel-contracts", "parallel-scene", "parallel-metrics", "numpy==2.5.4", "shapely==2.2.0", "pyarrow==26.0.0"]
+dependencies = ["parallel-contracts", "parallel-scene", "parallel-metrics", "numpy==2.5.4", "shapely==2.2.0", "pyarrow==26.0.0", "rasterio==1.5.2"]
 
 [build-system]
 requires = ["hatchling"]

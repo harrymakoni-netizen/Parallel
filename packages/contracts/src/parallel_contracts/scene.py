@@ -59,7 +59,9 @@ class VisualAsset(BaseModel):
 class SpatialObject(BaseModel):
     id: str
     name: str
-    kind: str = Field(description="e.g. exit, obstacle, walkable_area, vehicle, equipment, zone, evidence_marker")
+    kind: str = Field(
+        description="e.g. exit, obstacle, walkable_area, vehicle, equipment, zone, evidence_marker"
+    )
     layer: str = "objects"
     geometry: Geometry
     belongs_to: Belonging = Belonging.prepared_model
@@ -125,7 +127,8 @@ class SceneRevisionContent(BaseModel):
     scene_id: str
     revision_number: int = 1
     hypothetical: bool = Field(
-        default=False, description="Explicitly labelled hypothetical environment (may contain generated content)."
+        default=False,
+        description="Explicitly labelled hypothetical environment (may contain generated content).",
     )
     coordinates: SceneCoordinates = Field(default_factory=SceneCoordinates)
     source_asset_ids: list[str] = Field(default_factory=list)
@@ -152,11 +155,13 @@ class SceneRevisionContent(BaseModel):
             hyp_recorded = [
                 o.id
                 for o in self.spatial_objects
-                if o.belongs_to == Belonging.recorded_scene and o.provenance.kind == ProvenanceKind.ai_suggested
+                if o.belongs_to == Belonging.recorded_scene
+                and o.provenance.kind == ProvenanceKind.ai_suggested
             ]
             if hyp_recorded:
                 raise ValueError(
-                    "AI-suggested objects cannot be recorded as observed scene content: " + ", ".join(hyp_recorded)
+                    "AI-suggested objects cannot be recorded as observed scene content: "
+                    + ", ".join(hyp_recorded)
                 )
         ids = [o.id for o in self.spatial_objects]
         if len(ids) != len(set(ids)):

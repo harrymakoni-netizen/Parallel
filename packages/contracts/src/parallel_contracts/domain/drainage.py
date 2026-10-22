@@ -24,7 +24,9 @@ class RainfallSeries(BaseModel):
     id: str
     name: str
     interval_min: float = Field(gt=0, description="Rain gage recording interval")
-    intensities_mm_per_h: list[float] = Field(min_length=1, description="One intensity per interval, starting at t=0")
+    intensities_mm_per_h: list[float] = Field(
+        min_length=1, description="One intensity per interval, starting at t=0"
+    )
     provenance: Provenance = Field(default_factory=_assumed)
 
     @property
@@ -116,7 +118,9 @@ class Conduit(BaseModel):
 class PumpCurve(BaseModel):
     id: str
     type: Literal["PUMP1", "PUMP2", "PUMP3", "PUMP4"] = "PUMP3"
-    points: list[tuple[float, float]] = Field(min_length=1, description="(head m or depth m, flow m3/s) pairs")
+    points: list[tuple[float, float]] = Field(
+        min_length=1, description="(head m or depth m, flow m3/s) pairs"
+    )
 
 
 class Pump(BaseModel):
@@ -168,7 +172,9 @@ class LidUsage(BaseModel):
 
 class DrainageNetworkModel(BaseModel):
     model_kind: Literal["drainage_network"] = "drainage_network"
-    vertical_reference: str = Field(description="Vertical datum for all elevations; required for drainage models.")
+    vertical_reference: str = Field(
+        description="Vertical datum for all elevations; required for drainage models."
+    )
     start_datetime: str = "01/01/2026 00:00:00"
     end_datetime: str = "01/01/2026 06:00:00"
     report_step_s: int = 60

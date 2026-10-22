@@ -54,7 +54,9 @@ class TestedVersion(BaseModel):
     version: str
     platform: str
     verified_on: str | None = Field(default=None, description="Date of the recorded verification")
-    evidence: str | None = Field(default=None, description="Test id or execution record documenting the verification")
+    evidence: str | None = Field(
+        default=None, description="Test id or execution record documenting the verification"
+    )
     status: Literal["verified", "awaiting_environment", "not_verified"] = "not_verified"
 
 

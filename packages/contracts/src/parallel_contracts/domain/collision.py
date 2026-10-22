@@ -31,7 +31,9 @@ class EvidenceTarget(BaseModel):
     id: str
     observation_id: str
     vehicle_id: str | None = None
-    kind: Literal["rest_position", "point_of_impact_area", "tyre_mark_start", "tyre_mark_end", "debris_centroid"]
+    kind: Literal[
+        "rest_position", "point_of_impact_area", "tyre_mark_start", "tyre_mark_end", "debris_centroid"
+    ]
     position: Position
     heading_deg: float | None = None
     position_uncertainty_m: float = Field(gt=0)

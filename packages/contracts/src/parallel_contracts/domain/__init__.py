@@ -115,7 +115,9 @@ class DomainModelEnvelope(BaseModel):
     name: str
     description: str | None = None
     coordinate_frame: str = "canonical"
-    scene_revision_id: str | None = Field(default=None, description="Scene revision the model was prepared from")
+    scene_revision_id: str | None = Field(
+        default=None, description="Scene revision the model was prepared from"
+    )
     content: DomainModelContent
     assumptions: list[Assumption] = Field(default_factory=list)
     provenance: Provenance = Field(default_factory=lambda: Provenance(kind=ProvenanceKind.assumption))
@@ -124,7 +126,9 @@ class DomainModelEnvelope(BaseModel):
     def _discipline_matches(self) -> DomainModelEnvelope:
         expected = MODEL_KIND_DISCIPLINE[self.content.model_kind]
         if expected != self.discipline:
-            raise ValueError(f"model kind {self.content.model_kind} belongs to discipline {expected}, not {self.discipline}")
+            raise ValueError(
+                f"model kind {self.content.model_kind} belongs to discipline {expected}, not {self.discipline}"
+            )
         return self
 
 

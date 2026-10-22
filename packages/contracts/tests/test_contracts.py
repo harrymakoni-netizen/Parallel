@@ -110,7 +110,16 @@ class TestDomainRules:
             "rainfall": [{"id": "r", "name": "r", "interval_min": 5, "intensities_mm_per_h": [10]}],
             "raingage_series": {"G": "r"},
             "outfalls": [{"id": "O", "position": [0, 0], "invert_elev_m": 0}],
-            "conduits": [{"id": "C", "from_node": "J", "to_node": "O", "length_m": 10, "roughness_n": 0.013, "geom1_m": 0.3}],
+            "conduits": [
+                {
+                    "id": "C",
+                    "from_node": "J",
+                    "to_node": "O",
+                    "length_m": 10,
+                    "roughness_n": 0.013,
+                    "geom1_m": 0.3,
+                }
+            ],
         }
         with pytest.raises(ValidationError, match="vertical reference"):
             DrainageNetworkModel(**base)

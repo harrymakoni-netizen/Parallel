@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field, model_validator
 from ..geometry import Position
 from ..provenance import Provenance, ProvenanceKind
 
-NodeType = Literal["priority", "traffic_light", "right_before_left", "allway_stop", "dead_end", "priority_stop"]
+NodeType = Literal[
+    "priority", "traffic_light", "right_before_left", "allway_stop", "dead_end", "priority_stop"
+]
 
 
 class RoadNode(BaseModel):
@@ -31,7 +33,9 @@ class RoadEdge(BaseModel):
     speed_mps: float = Field(default=13.89, gt=0)
     priority: int = 1
     name: str | None = None
-    shape: list[Position] | None = Field(default=None, description="Intermediate shape points (local metres).")
+    shape: list[Position] | None = Field(
+        default=None, description="Intermediate shape points (local metres)."
+    )
     allow_pedestrians_sidewalk: bool = False
     provenance: Provenance = Field(default_factory=lambda: Provenance(kind=ProvenanceKind.assumption))
 
@@ -68,7 +72,9 @@ class DemandFlow(BaseModel):
     number: int = Field(ge=0, description="Exact number of vehicles inserted evenly between begin and end.")
     vtype: str = "car"
     provenance: Provenance = Field(
-        default_factory=lambda: Provenance(kind=ProvenanceKind.assumption, note="Uncalibrated demand assumption")
+        default_factory=lambda: Provenance(
+            kind=ProvenanceKind.assumption, note="Uncalibrated demand assumption"
+        )
     )
 
     @model_validator(mode="after")
@@ -112,9 +118,13 @@ class TrafficControls(BaseModel):
     closed_edges: list[str] = Field(default_factory=list)
     lane_changes: dict[str, int] = Field(default_factory=dict, description="edge id -> number of lanes")
     speed_changes_mps: dict[str, float] = Field(default_factory=dict)
-    node_type_changes: dict[str, NodeType] = Field(default_factory=dict, description="Intersection control alternatives")
+    node_type_changes: dict[str, NodeType] = Field(
+        default_factory=dict, description="Intersection control alternatives"
+    )
     tls_programs: list[TlsProgram] = Field(default_factory=list, description="Replacement signal programs")
     demand_scale: float = Field(default=1.0, gt=0, le=5.0)
     end_s: float = Field(default=3600.0, gt=0, description="Simulation horizon")
-    warmup_s: float = Field(default=0.0, ge=0, description="Trips departing before this time are excluded from metrics")
+    warmup_s: float = Field(
+        default=0.0, ge=0, description="Trips departing before this time are excluded from metrics"
+    )
     fcd_period_s: float = Field(default=1.0, gt=0)

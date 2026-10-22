@@ -63,3 +63,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "parallel_contracts", "parallel_scene", "parallel_metrics", "parallel_engines", "parallel_core",
+    "parallel_api", "parallel_reconstruction", "parallel_simulation", "parallel_results",
+]

@@ -104,7 +104,9 @@ class TrajectoryColumnMapping(BaseModel):
     length_unit: Literal["m", "ft"] = "m"
     speed_unit: Literal["m/s", "km/h", "mph"] = "m/s"
     heading_unit: Literal["deg", "rad"] = "deg"
-    vehicle_id_map: dict[str, str] = Field(default_factory=dict, description="exported vehicle label -> vehicle id")
+    vehicle_id_map: dict[str, str] = Field(
+        default_factory=dict, description="exported vehicle label -> vehicle id"
+    )
 
 
 class EvidenceResidual(BaseModel):

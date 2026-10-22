@@ -37,11 +37,21 @@ LEGAL_TRANSITIONS: dict[RunState, frozenset[RunState]] = {
     RunState.validating: frozenset({RunState.queued, RunState.failed, RunState.cancelled}),
     RunState.queued: frozenset({RunState.preparing, RunState.failed, RunState.cancelled}),
     RunState.preparing: frozenset(
-        {RunState.running, RunState.awaiting_external_result, RunState.failed, RunState.cancelled, RunState.queued}
+        {
+            RunState.running,
+            RunState.awaiting_external_result,
+            RunState.failed,
+            RunState.cancelled,
+            RunState.queued,
+        }
     ),
     RunState.running: frozenset({RunState.collecting, RunState.failed, RunState.cancelled, RunState.queued}),
-    RunState.collecting: frozenset({RunState.postprocessing, RunState.failed, RunState.cancelled, RunState.queued}),
-    RunState.postprocessing: frozenset({RunState.completed, RunState.failed, RunState.cancelled, RunState.queued}),
+    RunState.collecting: frozenset(
+        {RunState.postprocessing, RunState.failed, RunState.cancelled, RunState.queued}
+    ),
+    RunState.postprocessing: frozenset(
+        {RunState.completed, RunState.failed, RunState.cancelled, RunState.queued}
+    ),
     # An operator-supplied result package is validated and normalised (collecting -> postprocessing).
     RunState.awaiting_external_result: frozenset({RunState.collecting, RunState.failed, RunState.cancelled}),
     RunState.completed: frozenset(),
@@ -88,7 +98,9 @@ class ValidationReport(BaseModel):
 
 class ArtifactRef(BaseModel):
     name: str
-    kind: Literal["input", "raw_output", "normalised", "log", "trajectory", "timeseries", "field", "report", "package"]
+    kind: Literal[
+        "input", "raw_output", "normalised", "log", "trajectory", "timeseries", "field", "report", "package"
+    ]
     media_type: str
     sha256: str
     size_bytes: int
@@ -150,4 +162,6 @@ class ResultEnvelope(BaseModel):
     )
     processing_history: list[ProcessingStep] = Field(default_factory=list)
     imported: ImportedProvenance | None = None
-    summary: dict[str, Any] = Field(default_factory=dict, description="Small engine-specific summary for display")
+    summary: dict[str, Any] = Field(
+        default_factory=dict, description="Small engine-specific summary for display"
+    )

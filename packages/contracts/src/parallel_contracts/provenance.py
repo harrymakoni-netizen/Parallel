@@ -120,7 +120,9 @@ class SourcedValue(BaseModel):
 class Assumption(BaseModel):
     id: str
     statement: str
-    applies_to: list[str] = Field(default_factory=list, description="Paths or object ids the assumption covers.")
+    applies_to: list[str] = Field(
+        default_factory=list, description="Paths or object ids the assumption covers."
+    )
     rationale: str | None = None
     provenance: Provenance = Field(default_factory=lambda: Provenance(kind=ProvenanceKind.assumption))
 

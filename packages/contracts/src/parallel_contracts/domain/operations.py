@@ -26,7 +26,9 @@ class OpsResource(BaseModel):
 class OpsStep(BaseModel):
     id: str
     name: str
-    resource_id: str | None = Field(default=None, description="Resource held for the step; None = no resource needed")
+    resource_id: str | None = Field(
+        default=None, description="Resource held for the step; None = no resource needed"
+    )
     duration: Distribution
 
 
@@ -82,7 +84,8 @@ class OperationsControls(BaseModel):
     capacity_changes: dict[str, int] = Field(default_factory=dict, description="resource id -> capacity")
     added_resources: list[OpsResource] = Field(default_factory=list)
     step_resource_changes: dict[str, str] = Field(
-        default_factory=dict, description="'flow_id.step_id' -> resource id (e.g. send deliveries to a second bay)"
+        default_factory=dict,
+        description="'flow_id.step_id' -> resource id (e.g. send deliveries to a second bay)",
     )
     arrival_interval_scale: float = Field(default=1.0, gt=0, le=10)
     replications: int = Field(default=10, ge=1, le=200)

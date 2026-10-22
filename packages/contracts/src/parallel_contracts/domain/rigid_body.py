@@ -24,7 +24,9 @@ class RigidBody(BaseModel):
     dynamic_friction: float = Field(default=0.5, ge=0)
     restitution: float = Field(default=0.0, ge=0, le=1)
     position: Position
-    orientation_wxyz: list[float] = Field(default_factory=lambda: [1.0, 0.0, 0.0, 0.0], min_length=4, max_length=4)
+    orientation_wxyz: list[float] = Field(
+        default_factory=lambda: [1.0, 0.0, 0.0, 0.0], min_length=4, max_length=4
+    )
     linear_velocity: list[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0], min_length=3, max_length=3)
     provenance: Provenance = Field(default_factory=lambda: Provenance(kind=ProvenanceKind.assumption))
 

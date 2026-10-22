@@ -55,7 +55,10 @@ class CfdStudyModel(BaseModel):
         if self.domain_x1 <= self.domain_x0 or self.domain_y1 <= self.domain_y0:
             raise ValueError("domain bounds must be ordered")
         for o in self.obstacles:
-            if not (self.domain_x0 < o.x0 < o.x1 < self.domain_x1 and self.domain_y0 < o.y0 < o.y1 < self.domain_y1):
+            if not (
+                self.domain_x0 < o.x0 < o.x1 < self.domain_x1
+                and self.domain_y0 < o.y0 < o.y1 < self.domain_y1
+            ):
                 raise ValueError(f"obstacle {o.id} must lie strictly inside the domain")
         return self
 
@@ -66,4 +69,6 @@ class CfdControls(BaseModel):
     removed_obstacles: list[str] = Field(default_factory=list)
     added_obstacles: list[CfdObstacle] = Field(default_factory=list)
     iterations: int = Field(default=600, ge=50, le=5000)
-    comfort_threshold_mps: float = Field(default=5.0, gt=0, description="Speed threshold for the exceedance-area metric")
+    comfort_threshold_mps: float = Field(
+        default=5.0, gt=0, description="Speed threshold for the exceedance-area metric"
+    )

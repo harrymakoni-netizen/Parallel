@@ -38,7 +38,11 @@ class MetricValue(BaseModel):
     value: float | None
     unit: str
     status: MetricStatus = MetricStatus.available
-    entity: str | None = Field(default=None, description="Entity id for per-entity metrics (exit, node, edge, ...)")
+    entity: str | None = Field(
+        default=None, description="Entity id for per-entity metrics (exit, node, edge, ...)"
+    )
     replicate: int | None = None
-    stats: dict[str, float] | None = Field(default=None, description="Replicate distribution summary when available")
+    stats: dict[str, float] | None = Field(
+        default=None, description="Replicate distribution summary when available"
+    )
     note: str | None = None

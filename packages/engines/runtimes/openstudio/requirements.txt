@@ -1,0 +1,2 @@
+# OpenStudio SDK Python bindings: model preparation and IDF translation for EnergyPlus.
+openstudio==3.11.0

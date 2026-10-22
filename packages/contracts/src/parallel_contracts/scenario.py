@@ -36,5 +36,7 @@ class ScenarioContent(BaseModel):
     @model_validator(mode="after")
     def _controls_match(self) -> ScenarioContent:
         if CONTROLS_DISCIPLINE[self.controls.kind] != self.discipline:
-            raise ValueError(f"controls of kind {self.controls.kind} do not belong to discipline {self.discipline}")
+            raise ValueError(
+                f"controls of kind {self.controls.kind} do not belong to discipline {self.discipline}"
+            )
         return self

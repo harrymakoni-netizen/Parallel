@@ -37,7 +37,7 @@ class PlyHeader:
 
     @property
     def is_gaussian_splat(self) -> bool:
-        return GAUSSIAN_REQUIRED <= {p for p, _ in self.properties}
+        return {p for p, _ in self.properties} >= GAUSSIAN_REQUIRED
 
     @property
     def has_colour(self) -> bool:
@@ -107,7 +107,9 @@ def read_vertices(path: str | Path, max_vertices: int = 50_000_000) -> tuple[Ply
     return h, data
 
 
-def write_point_cloud(path: str | Path, xyz: np.ndarray, rgb: np.ndarray | None = None, comments: list[str] | None = None) -> None:
+def write_point_cloud(
+    path: str | Path, xyz: np.ndarray, rgb: np.ndarray | None = None, comments: list[str] | None = None
+) -> None:
     xyz = np.asarray(xyz, dtype=np.float32)
     fields = [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
     if rgb is not None:

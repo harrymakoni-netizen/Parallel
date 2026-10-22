@@ -103,6 +103,10 @@ class WaterSupplyControls(BaseModel):
     kind: Literal["water_supply"] = "water_supply"
     closed_pipes: list[str] = Field(default_factory=list)
     demand_multiplier: float = Field(default=1.0, gt=0, le=10)
-    extra_demand_lps: dict[str, float] = Field(default_factory=dict, description="junction id -> added demand (e.g. fire flow)")
+    extra_demand_lps: dict[str, float] = Field(
+        default_factory=dict, description="junction id -> added demand (e.g. fire flow)"
+    )
     pipe_diameter_changes_mm: dict[str, float] = Field(default_factory=dict)
-    min_pressure_m: float = Field(default=15.0, description="Service pressure threshold used for the deficiency metric")
+    min_pressure_m: float = Field(
+        default=15.0, description="Service pressure threshold used for the deficiency metric"
+    )

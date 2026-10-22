@@ -64,7 +64,9 @@ class Transform(BaseModel):
 class GeoReference(BaseModel):
     horizontal_crs: str = Field(description="Projected CRS for metric work, e.g. 'EPSG:32735'.")
     local_origin_projected: list[float] = Field(min_length=2, max_length=3)
-    local_rotation_deg: float = Field(default=0.0, description="Rotation of local +X from projected East, CCW.")
+    local_rotation_deg: float = Field(
+        default=0.0, description="Rotation of local +X from projected East, CCW."
+    )
     vertical_reference: str = Field(default="unknown", description="Vertical datum, or explicitly 'unknown'.")
     vertical_offset_m: float | None = Field(
         default=None, description="Height of local z=0 in the vertical reference, when known."

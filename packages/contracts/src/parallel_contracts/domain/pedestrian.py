@@ -56,7 +56,9 @@ class RouteSegment(BaseModel):
 class MovementParameters(BaseModel):
     model: Literal["CollisionFreeSpeedModel"] = "CollisionFreeSpeedModel"
     desired_speed: Distribution = Field(
-        default_factory=lambda: Distribution(kind="normal", mean=1.2, sd=0.2, clip_low=0.5, clip_high=2.0, unit="m/s")
+        default_factory=lambda: Distribution(
+            kind="normal", mean=1.2, sd=0.2, clip_low=0.5, clip_high=2.0, unit="m/s"
+        )
     )
     radius: Distribution = Field(default_factory=lambda: Distribution.constant(0.2, "m"))
     time_gap_s: float = 1.0
@@ -119,5 +121,7 @@ class PedestrianControls(BaseModel):
     @model_validator(mode="after")
     def _no_timed(self) -> PedestrianControls:
         if self.timed_closures:
-            raise ValueError("Timed closures are not enabled: their model behaviour has not been implemented and tested.")
+            raise ValueError(
+                "Timed closures are not enabled: their model behaviour has not been implemented and tested."
+            )
         return self

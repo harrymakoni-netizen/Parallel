@@ -26,7 +26,9 @@ def to_list(m: np.ndarray) -> list[list[float]]:
     return [[float(v) for v in row] for row in np.asarray(m, dtype=float)]
 
 
-def apply(m: np.ndarray | Sequence[Sequence[float]], points: np.ndarray | Sequence[Sequence[float]]) -> np.ndarray:
+def apply(
+    m: np.ndarray | Sequence[Sequence[float]], points: np.ndarray | Sequence[Sequence[float]]
+) -> np.ndarray:
     """Apply a 4x4 transform to an (N, 3) or (3,) array of points."""
     mat = as_matrix(m)
     p = np.asarray(points, dtype=float)
@@ -83,7 +85,9 @@ def matrix_to_quat(r: np.ndarray) -> np.ndarray:
     return qa if qa[0] >= 0 else -qa
 
 
-def similarity(scale: float = 1.0, q_wxyz: Sequence[float] = (1, 0, 0, 0), t: Sequence[float] = (0, 0, 0)) -> np.ndarray:
+def similarity(
+    scale: float = 1.0, q_wxyz: Sequence[float] = (1, 0, 0, 0), t: Sequence[float] = (0, 0, 0)
+) -> np.ndarray:
     m = np.eye(4)
     m[:3, :3] = scale * quat_to_matrix(q_wxyz)
     m[:3, 3] = np.asarray(t, dtype=float)

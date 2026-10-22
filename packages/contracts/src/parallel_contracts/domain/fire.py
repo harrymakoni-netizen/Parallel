@@ -7,13 +7,12 @@ from appearance.
 
 from __future__ import annotations
 
-from typing import Literal
-
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from ..provenance import Provenance, ProvenanceKind
+
 
 def _xb(v: list[float]) -> list[float]:
     if len(v) != 6:
