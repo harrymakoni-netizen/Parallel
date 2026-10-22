@@ -20,6 +20,11 @@ router = APIRouter(tags=["reports"])
 FILES = {"report.pdf": "pdf_key", "metrics.csv": "csv_key", "manifest.json": "json_key"}
 
 
+def _case_ref(rep: Report) -> dict:
+    """Audit detail that keeps case-report events visible only to the case's assignees."""
+    return {"case_id": rep.case_id} if rep.case_id else {}
+
+
 def enqueue(db, report: Report) -> None:
     db.commit()
     if get_settings().task_always_eager:
@@ -54,6 +59,10 @@ def create(project_id: str, body: ReportIn, user: CurrentUser, db: DB):
         r = db.get(SimulationRun, rid)
         if r is None or r.project_id != project_id:
             raise ApiError(404, "not_found", f"Run {rid} not found in this project")
+        if r.case_id is not None:
+            require_case(db, user, r.case_id)
+            if body.kind != "case" or body.case_id != r.case_id:
+                raise ApiError(422, "case_run", f"Run {rid} belongs to a case; include it in that case's report")
         if r.state != "completed":
             raise ApiError(
                 422, "run_not_completed", f"Run {rid} is {r.state}; reports cover completed runs only"
@@ -96,7 +105,7 @@ def create(project_id: str, body: ReportIn, user: CurrentUser, db: DB):
         object_id=rep.id,
         actor_id=user.id,
         project_id=project_id,
-        details={"kind": body.kind, "runs": len(run_ids), "narrative_origin": rep.narrative_origin},
+        details={"kind": body.kind, "runs": len(run_ids), "narrative_origin": rep.narrative_origin, **_case_ref(rep)},
     )
     enqueue(db, rep)
     return rep
@@ -142,7 +151,7 @@ def file_url(report_id: str, name: str, user: CurrentUser, db: DB):
         object_id=rep.id,
         actor_id=user.id,
         project_id=rep.project_id,
-        details={"file": name},
+        details={"file": name, **_case_ref(rep)},
     )
     return SignedUrlOut(
         url=get_storage().signed_url(key, f"{rep.title[:60]}-{name}"),
@@ -167,6 +176,7 @@ def regenerate(report_id: str, user: CurrentUser, db: DB):
         object_id=rep.id,
         actor_id=user.id,
         project_id=rep.project_id,
+        details=_case_ref(rep),
     )
     enqueue(db, rep)
     return rep

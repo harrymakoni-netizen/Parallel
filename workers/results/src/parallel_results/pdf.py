@@ -56,6 +56,12 @@ S = {
     "cell": ParagraphStyle("cell", parent=_base, fontSize=7.5, leading=9.5),
     "cellb": ParagraphStyle("cellb", parent=_base, fontName="Helvetica-Bold", fontSize=7.5, leading=9.5),
     "mono": ParagraphStyle("mono", parent=_base, fontName="Courier", fontSize=6.8, leading=9),
+    "idline": ParagraphStyle(
+        "idline", parent=_base, fontName="Courier", fontSize=6.3, leading=8.5, textColor=INK_2
+    ),
+    "hashline": ParagraphStyle(
+        "hashline", parent=_base, fontName="Courier", fontSize=5.8, leading=8, textColor=INK_2
+    ),
     "bullet": ParagraphStyle("bullet", parent=_base, leftIndent=10, bulletIndent=2),
 }
 STATUS_TEXT = {"ok": "OK", "warning": "Warning", "info": "Info", "error": "Incompatible"}
@@ -86,7 +92,7 @@ def table(
     for r_i, row in enumerate(rows):
         cells = []
         for c_i, v in enumerate(row):
-            if isinstance(v, Paragraph):
+            if isinstance(v, Paragraph | list):
                 cells.append(v)
             elif header and r_i == 0:
                 cells.append(p(v, "cellb"))
@@ -186,6 +192,148 @@ def _flat_summary(summary: dict[str, Any]) -> list[list[str]]:
             v = num(v)
         rows.append([humanise(k), v])
     return rows
+
+
+def stacked(text: str, *lines: tuple[str, str]) -> list:
+    """A cell with readable text first and unbroken identifiers beneath it."""
+    return [p(text, "cell"), *[p(v, style) for v, style in lines if v]]
+
+
+def case_sections(case: dict[str, Any], run_refs: dict[str, str]) -> list:
+    """Evidence, observations, interpretations, hypotheses, timeline and analyses with short references.
+
+    Each record gets a short reference (E1, O1, I1, H1) used for cross-references in other tables;
+    the full identifier is printed once, unbroken, beneath the record.
+    """
+    refs: dict[str, str] = {}
+    for prefix, key in (
+        ("E", "evidence"),
+        ("O", "observations"),
+        ("I", "interpretations"),
+        ("H", "hypotheses"),
+    ):
+        for i, x in enumerate(case[key], 1):
+            refs[x["id"]] = f"{prefix}{i}"
+
+    def ref(i: str | None) -> str:
+        return refs.get(i or "", i or "—")
+
+    out: list = [p(f"Case {case['reference']}: {case['title']}", "h1"), p(case["media_policy"], "small")]
+    rows = [["Ref", "Item", "Kind", "Claimed capture", "Captured by"]]
+    rows += [
+        [
+            ref(e["id"]),
+            stacked(
+                e["title"],
+                (f"ID {e['id']}", "idline"),
+                (f"SHA-256 {e['original_sha256']}" if e["original_sha256"] else "", "hashline"),
+            ),
+            e["kind"],
+            _when(e["claimed_captured_at"]),
+            e["captured_by"] or "—",
+        ]
+        for e in case["evidence"]
+    ]
+    out += [p("Evidence references", "h2"), table(rows, [10 * mm, 100 * mm, 18 * mm, 28 * mm, 18 * mm])]
+
+    def measured(o: dict) -> str:
+        u = o.get("uncertainty") or {}
+        if o["measurement_value"] is not None:
+            pm = f" ± {num(u['value'])}" if u.get("kind") == "absolute" and u.get("value") is not None else ""
+            return f"{num(o['measurement_value'])}{pm} {o['measurement_unit'] or ''}".strip()
+        if u.get("kind") == "range" and u.get("lower") is not None:
+            return f"{u['lower']:.1f}–{u['upper']:.1f} {u.get('unit') or ''}".strip()
+        if u.get("kind") == "absolute" and u.get("value") is not None:
+            return f"position ± {num(u['value'])} {u.get('unit') or ''}".strip()
+        return "—"
+
+    for key, label in (
+        ("observations", "Observations (what the evidence shows)"),
+        ("interpretations", "Interpretations (analyst reasoning)"),
+    ):
+        if not case[key]:
+            continue
+        rows = [["Ref", "Statement", "Measured / result", "Limitation", "Review"]]
+        for o in case[key]:
+            src = f"From evidence {ref(o['evidence_item_id'])}" if o["evidence_item_id"] else ""
+            basis = (
+                f"Based on {', '.join(ref(b) for b in o.get('based_on', []))}" if o.get("based_on") else ""
+            )
+            rows.append(
+                [
+                    ref(o["id"]),
+                    stacked(o["text"], (f"{basis or src}", "small"), (f"ID {o['id']}", "idline")),
+                    measured(o),
+                    o["limitation"] or "—",
+                    o["review_status"],
+                ]
+            )
+        out += [p(label, "h2"), table(rows, [10 * mm, 84 * mm, 24 * mm, 38 * mm, 18 * mm])]
+
+    rows = [["Ref", "Hypothesis", "Status", "Supporting", "Contradicting", "Evidence fit"]]
+    for h in case["hypotheses"]:
+        sup = [ref(li["observation_id"]) for li in h["links"] if li["relation"] == "supports"]
+        con = [ref(li["observation_id"]) for li in h["links"] if li["relation"] == "contradicts"]
+        fit = h.get("evidence_fit") or {}
+        if fit.get("rms_residual_m") is not None:
+            fit_text = (
+                f"RMS residual {fit['rms_residual_m']:.2f} m; {fit['targets_within_uncertainty']} of "
+                f"{fit['targets_total']} targets within uncertainty ({run_refs.get(fit['run_id'], fit['run_id'])})"
+            )
+        else:
+            fit_text = "Not evaluated"
+        rows.append(
+            [
+                ref(h["id"]),
+                stacked(h["label"], (h.get("description") or "", "small"), (f"ID {h['id']}", "idline")),
+                h["status"],
+                ", ".join(sup) or "—",
+                ", ".join(con) or "—",
+                fit_text,
+            ]
+        )
+    out += [
+        p("Hypotheses", "h2"),
+        table(rows, [10 * mm, 66 * mm, 16 * mm, 20 * mm, 22 * mm, 40 * mm]),
+        p(
+            "Evidence fit is the defined RMS distance between modelled and measured evidence targets. It is a "
+            "consistency measure for one model output, not a probability that a hypothesis is true.",
+            "small",
+        ),
+    ]
+    if case["timeline"]:
+        rows = [["t (s)", "±", "Event", "Source", "Belongs to"]]
+        rows += [
+            [
+                num(t["t_offset_s"]),
+                num(t["t_uncertainty_s"]),
+                t["description"],
+                f"{t['source_type']} {ref(t['source_id']) if t['source_id'] else ''}".strip(),
+                ref(t["hypothesis_id"]) if t["hypothesis_id"] else "Recorded",
+            ]
+            for t in case["timeline"]
+        ]
+        out += [p("Timeline", "h2"), table(rows, [14 * mm, 10 * mm, 96 * mm, 30 * mm, 24 * mm])]
+    if case["external_analyses"]:
+        rows = [["Analysis", "Method", "Provenance"]]
+        rows += [
+            [
+                stacked(
+                    f"{x['engine_id']} for {ref(x['hypothesis_id'])}",
+                    (x["external_installation"], "small"),
+                    (f"{run_refs.get(x['run_id'], '')}", "small"),
+                ),
+                x["method"],
+                stacked(
+                    x["supplied_provenance"] or "—",
+                    (f"Imported by {x['analyst']}", "small"),
+                    (f"Package SHA-256 {x['package_sha256']}" if x["package_sha256"] else "", "hashline"),
+                ),
+            ]
+            for x in case["external_analyses"]
+        ]
+        out += [p("External analyses", "h2"), table(rows, [42 * mm, 48 * mm, 84 * mm])]
+    return out
 
 
 def render_pdf(m: dict[str, Any], charts: list[dict[str, Any]], figures: list[dict[str, Any]]) -> bytes:
@@ -410,90 +558,7 @@ def render_pdf(m: dict[str, Any], charts: list[dict[str, Any]], figures: list[di
     # ---------------------------------------------------------------- case sections
     case = m.get("case")
     if case:
-        story.append(p(f"Case {case['reference']}: {case['title']}", "h1"))
-        story.append(p(case["media_policy"], "small"))
-        rows = [["Evidence ID", "Kind", "Title", "Original SHA-256", "Claimed capture"]]
-        rows += [
-            [e["id"], e["kind"], e["title"], e["original_sha256"] or "—", _when(e["claimed_captured_at"])]
-            for e in case["evidence"]
-        ]
-        story += [
-            p("Evidence references", "h2"),
-            table(rows, [30 * mm, 18 * mm, 42 * mm, 54 * mm, 30 * mm], mono_cols=(0, 3)),
-        ]
-        for key, label in (
-            ("observations", "Observations (what the evidence shows)"),
-            ("interpretations", "Interpretations (analyst reasoning)"),
-        ):
-            rows = [["ID", "Statement", "Measurement", "Limitation", "Review"]]
-            rows += [
-                [
-                    o["id"],
-                    o["text"],
-                    f"{num(o['measurement_value'])} {o['measurement_unit'] or ''}".strip()
-                    if o["measurement_value"] is not None
-                    else "—",
-                    o["limitation"] or "—",
-                    o["review_status"],
-                ]
-                for o in case[key]
-            ]
-            story += [
-                p(label, "h2"),
-                table(rows, [30 * mm, 70 * mm, 24 * mm, 32 * mm, 18 * mm], mono_cols=(0,)),
-            ]
-        rows = [["Hypothesis ID", "Label", "Status", "Supporting", "Contradicting", "Evidence fit"]]
-        for h in case["hypotheses"]:
-            sup = [li["observation_id"] for li in h["links"] if li["relation"] == "supports"]
-            con = [li["observation_id"] for li in h["links"] if li["relation"] == "contradicts"]
-            fit = h.get("evidence_fit") or {}
-            rows.append(
-                [
-                    h["id"],
-                    h["label"],
-                    h["status"],
-                    ", ".join(sup) or "—",
-                    ", ".join(con) or "—",
-                    fit.get("summary", "not evaluated"),
-                ]
-            )
-        story += [
-            p("Hypotheses", "h2"),
-            table(rows, [30 * mm, 34 * mm, 14 * mm, 32 * mm, 32 * mm, 32 * mm], mono_cols=(0, 3, 4)),
-        ]
-        if case["timeline"]:
-            rows = [["t (s)", "±", "Event", "Source", "Hypothesis"]]
-            rows += [
-                [
-                    num(t["t_offset_s"]),
-                    num(t["t_uncertainty_s"]),
-                    t["description"],
-                    f"{t['source_type']} {t['source_id'] or ''}".strip(),
-                    t["hypothesis_id"] or "—",
-                ]
-                for t in case["timeline"]
-            ]
-            story += [
-                p("Timeline", "h2"),
-                table(rows, [14 * mm, 10 * mm, 80 * mm, 40 * mm, 30 * mm], mono_cols=(4,)),
-            ]
-        if case["external_analyses"]:
-            rows = [["Engine", "Installation", "Analyst", "Method", "Provenance", "Package SHA-256"]]
-            rows += [
-                [
-                    x["engine_id"],
-                    x["external_installation"],
-                    x["analyst"],
-                    x["method"],
-                    x["supplied_provenance"],
-                    x["package_sha256"] or "—",
-                ]
-                for x in case["external_analyses"]
-            ]
-            story += [
-                p("External analyses", "h2"),
-                table(rows, [18 * mm, 30 * mm, 22 * mm, 36 * mm, 36 * mm, 32 * mm], mono_cols=(5,)),
-            ]
+        story += case_sections(case, m.get("run_refs", {}))
 
     # ---------------------------------------------------------------- warnings, narrative, reviews, traceability
     story.append(p("Warnings", "h1"))

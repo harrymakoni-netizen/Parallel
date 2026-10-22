@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy import select
 
-from parallel_core.access import Action, require_case, require_project
+from parallel_core.access import Action, require_case, require_project, require_scoped
 from parallel_core.audit import record as audit
 from parallel_core.models import (
     DomainModel,
@@ -36,14 +36,15 @@ SCOPE_NOTE = {
 }
 
 
-def _project_for(db, user, body: ReviewIn) -> str:
+def _project_for(db, user, body: ReviewIn) -> tuple[str, str | None]:
+    """(project id, case id) of the reviewed object, after checking the reviewer's role."""
     t, oid = body.object_type, body.object_id
     if t in ("evidence_observation", "hypothesis"):
         obj = db.get(EvidenceObservation if t == "evidence_observation" else Hypothesis, oid)
         if obj is None:
             raise ApiError(404, "not_found", "Object not found")
         case = require_case(db, user, obj.case_id, Action.review)
-        return case.project_id
+        return case.project_id, case.id
     if t == "scene_revision":
         rev = db.get(SceneRevision, oid)
         parent = db.get(Scene, rev.scene_id) if rev else None
@@ -59,13 +60,14 @@ def _project_for(db, user, body: ReviewIn) -> str:
         parent = db.get(Report, oid)
     if parent is None:
         raise ApiError(404, "not_found", "Object not found")
-    require_project(db, user, parent.project_id, Action.review)
-    return parent.project_id
+    case_id = getattr(parent, "case_id", None)
+    require_scoped(db, user, parent.project_id, case_id, Action.review)
+    return parent.project_id, case_id
 
 
 @router.post("/reviews", response_model=ReviewOut, status_code=201)
 def create(body: ReviewIn, user: CurrentUser, db: DB):
-    project_id = _project_for(db, user, body)
+    project_id, case_id = _project_for(db, user, body)
     r = ReviewRecord(
         project_id=project_id,
         object_type=body.object_type,
@@ -96,7 +98,7 @@ def create(body: ReviewIn, user: CurrentUser, db: DB):
         object_id=body.object_id,
         actor_id=user.id,
         project_id=project_id,
-        details={"scope": body.scope, "status": body.status},
+        details={"scope": body.scope, "status": body.status, **({"case_id": case_id} if case_id else {})},
     )
     return r
 

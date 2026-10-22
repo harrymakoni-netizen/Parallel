@@ -185,7 +185,7 @@ def generate_report(report_id: str) -> str:
                 object_id=report_id,
                 actor_id=None,
                 project_id=project_id,
-                details={"files": hashes},
+                details={"files": hashes, **({"case_id": rep.case_id} if rep.case_id else {})},
             )
         return "completed"
     except Exception as e:  # recorded on the report; the task itself does not retry deterministic failures

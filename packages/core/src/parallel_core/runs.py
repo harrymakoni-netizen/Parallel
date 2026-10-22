@@ -216,6 +216,7 @@ def submit_run(
         publish(db, model_rev)
     run = SimulationRun(
         project_id=project.id,
+        case_id=scenario.case_id,
         scenario_id=scenario.id,
         scenario_revision_id=scenario_revision.id,
         domain_model_revision_id=model_rev.id,
@@ -685,6 +686,18 @@ def _publish_result(
 
 
 # ---------------------------------------------------------------- external results
+def _package_metadata(extracted: Path) -> dict:
+    """The operator's metadata.json from an exchange result package (untrusted; read as data only)."""
+    p = extracted / "metadata.json"
+    if not p.is_file() or p.stat().st_size > 256_000:
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(v, str | int | float)} if isinstance(data, dict) else {}
+
+
 def import_external(
     run_id: str,
     package_key: str,
@@ -739,7 +752,7 @@ def import_external(
             run = db.get(SimulationRun, run_id, with_for_update=True)
             assert run is not None
             transition(db, run, RunState.postprocessing, "imported result normalised", by=user_id)
-        meta = result.summary.get("metadata") or {}
+        meta = result.summary.get("metadata") or _package_metadata(extracted)
         _publish_result(
             run_id,
             attempt,
@@ -756,7 +769,7 @@ def import_external(
                     message=f"package sha256 {package_sha}",
                 )
             ],
-            engine_version=str(meta.get("software_version") or meta.get("hec_ras_version") or "external"),
+            engine_version=str(meta.get("software_version") or meta.get("hec_ras_version") or "not reported"),
             runtime={"external_installation": external_installation},
             warnings=[],
             imported=imported,

@@ -5,7 +5,7 @@ from geoalchemy2.elements import WKTElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy import func, select
 
-from parallel_core.access import Action, org_role, project_role, require_project
+from parallel_core.access import Action, org_role, project_role, require_project, visible_case_ids
 from parallel_core.audit import record as audit
 from parallel_core.db import utcnow
 from parallel_core.models import (
@@ -251,15 +251,13 @@ def set_project_member(project_id: str, body: dict, user: CurrentUser, db: DB):
 @router.get("/{project_id}/activity")
 def activity(project_id: str, user: CurrentUser, db: DB, page: Paging):
     require_project(db, user, project_id)
-    q = (
-        select(AuditEvent, User.display_name)
-        .outerjoin(User, User.id == AuditEvent.actor_id)
-        .where(AuditEvent.project_id == project_id)
+    # case events are visible only to people assigned to that case
+    case_id = AuditEvent.details["case_id"].astext
+    visible = (AuditEvent.project_id == project_id) & (
+        case_id.is_(None) | case_id.in_(visible_case_ids(db, user, project_id))
     )
-    total = (
-        db.scalar(select(func.count()).select_from(AuditEvent).where(AuditEvent.project_id == project_id))
-        or 0
-    )
+    q = select(AuditEvent, User.display_name).outerjoin(User, User.id == AuditEvent.actor_id).where(visible)
+    total = db.scalar(select(func.count()).select_from(AuditEvent).where(visible)) or 0
     rows = db.execute(q.order_by(AuditEvent.created_at.desc()).limit(page.limit).offset(page.offset)).all()
     return {
         "items": [

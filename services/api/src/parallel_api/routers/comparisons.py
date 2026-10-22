@@ -9,7 +9,14 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from sqlalchemy import select
 
-from parallel_core.access import AccessDenied, Action, can_project, require_project
+from parallel_core.access import (
+    AccessDenied,
+    Action,
+    can_project,
+    require_project,
+    require_scoped,
+    visible_case_ids,
+)
 from parallel_core.audit import record as audit
 from parallel_core.models import Comparison, SimulationRun
 
@@ -21,12 +28,13 @@ from ..services import comparisons as svc
 router = APIRouter(tags=["comparisons"])
 
 
-def load_runs(db, project_id: str, ids: list[str]) -> list[SimulationRun]:
+def load_runs(db, user, project_id: str, ids: list[str]) -> list[SimulationRun]:
     runs = []
     for rid in ids:
         r = db.get(SimulationRun, rid)
         if r is None or r.project_id != project_id:
             raise ApiError(404, "not_found", f"Run {rid} not found in this project")
+        require_scoped(db, user, project_id, r.case_id)
         if r.state != "completed":
             raise ApiError(
                 422, "run_not_completed", f"Run {rid} is {r.state}; only completed runs can be compared"
@@ -43,7 +51,7 @@ def create(project_id: str, body: ComparisonIn, user: CurrentUser, db: DB):
     ids = [i for i in body.run_ids if i != body.baseline_run_id]
     if not ids:
         raise ApiError(422, "nothing_to_compare", "Select at least one run besides the baseline")
-    base, *others = load_runs(db, project_id, [body.baseline_run_id, *ids])
+    base, *others = load_runs(db, user, project_id, [body.baseline_run_id, *ids])
     comp, table, described = svc.build(db, base, others)
     c = Comparison(
         project_id=project_id,
@@ -71,9 +79,17 @@ def create(project_id: str, body: ComparisonIn, user: CurrentUser, db: DB):
 @router.get("/projects/{project_id}/comparisons", response_model=list[ComparisonOut])
 def list_(project_id: str, user: CurrentUser, db: DB):
     require_project(db, user, project_id)
-    return db.scalars(
+    rows = db.scalars(
         select(Comparison).where(Comparison.project_id == project_id).order_by(Comparison.created_at.desc())
     ).all()
+    return [c for c in rows if _visible(db, user, c)]
+
+
+def _visible(db, user, c: Comparison) -> bool:
+    cases = {
+        r.case_id for r in db.scalars(select(SimulationRun).where(SimulationRun.id.in_(c.run_ids))) if r.case_id
+    }
+    return cases <= set(visible_case_ids(db, user, c.project_id))
 
 
 def _get(db, user, cid: str) -> Comparison:
@@ -81,6 +97,8 @@ def _get(db, user, cid: str) -> Comparison:
     if c is None:
         raise ApiError(404, "not_found", "Comparison not found")
     require_project(db, user, c.project_id)
+    if not _visible(db, user, c):
+        raise ApiError(404, "not_found", "Comparison not found")
     return c
 
 

@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 
 from parallel_contracts.runs import TERMINAL_STATES, RunState
 from parallel_core import events
-from parallel_core.access import Action, require_project
+from parallel_core.access import Action, require_project, require_scoped, visible_case_ids
 from parallel_core.audit import record as audit
 from parallel_core.db import SessionLocal, new_id
 from parallel_core.models import Metric, RunArtifact, Scenario, ScenarioRevision, SimulationRun
@@ -35,7 +35,7 @@ def _run(db, user, run_id: str, action=Action.view) -> SimulationRun:
     run = db.get(SimulationRun, run_id)
     if run is None:
         raise ApiError(404, "not_found", "Run not found")
-    require_project(db, user, run.project_id, action)
+    require_scoped(db, user, run.project_id, run.case_id, action)
     return run
 
 
@@ -47,13 +47,14 @@ def submit(
     db: DB,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
-    project = require_project(db, user, project_id, Action.edit)
+    require_project(db, user, project_id)
     rev = db.get(ScenarioRevision, body.scenario_revision_id)
     if rev is None:
         raise ApiError(404, "not_found", "Scenario revision not found")
     sc = db.get(Scenario, rev.scenario_id)
     if sc is None or sc.project_id != project_id:
         raise ApiError(404, "not_found", "Scenario revision not found")
+    project = require_scoped(db, user, project_id, sc.case_id, Action.edit)
     result = submit_run(
         db,
         project=project,
@@ -78,7 +79,11 @@ def list_runs(
     engine_id: str | None = None,
 ):
     require_project(db, user, project_id)
-    q = select(SimulationRun).where(SimulationRun.project_id == project_id)
+    cases = visible_case_ids(db, user, project_id)
+    q = select(SimulationRun).where(
+        SimulationRun.project_id == project_id,
+        SimulationRun.case_id.is_(None) | SimulationRun.case_id.in_(cases),
+    )
     if scenario_id:
         q = q.where(SimulationRun.scenario_id == scenario_id)
     if state:

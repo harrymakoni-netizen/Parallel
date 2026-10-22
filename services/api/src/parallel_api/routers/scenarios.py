@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from parallel_contracts.domain import DomainModelEnvelope
 from parallel_contracts.scenario import ScenarioContent
-from parallel_core.access import Action, require_project
+from parallel_core.access import Action, require_project, require_scoped, visible_case_ids
 from parallel_core.audit import record as audit
 from parallel_core.models import DomainModel, DomainModelRevision, Scenario, ScenarioRevision
 from parallel_core.revisions import adopt, create_scenario_revision, update_scenario_draft
@@ -34,7 +34,10 @@ def _check_engine(content: ScenarioContent) -> None:
 @router.get("/projects/{project_id}/scenarios", response_model=list[ScenarioOut])
 def list_scenarios(project_id: str, user: CurrentUser, db: DB, domain_model_id: str | None = None):
     require_project(db, user, project_id)
-    q = select(Scenario).where(Scenario.project_id == project_id)
+    cases = visible_case_ids(db, user, project_id)
+    q = select(Scenario).where(
+        Scenario.project_id == project_id, Scenario.case_id.is_(None) | Scenario.case_id.in_(cases)
+    )
     if domain_model_id:
         q = q.where(Scenario.domain_model_id == domain_model_id)
     return db.scalars(q.order_by(Scenario.created_at)).all()
@@ -42,16 +45,18 @@ def list_scenarios(project_id: str, user: CurrentUser, db: DB, domain_model_id: 
 
 @router.post("/projects/{project_id}/scenarios", response_model=ScenarioRevisionOut, status_code=201)
 def create_scenario(project_id: str, body: ScenarioIn, user: CurrentUser, db: DB):
-    require_project(db, user, project_id, Action.edit)
+    require_project(db, user, project_id)
     dm = db.get(DomainModel, body.domain_model_id)
     if dm is None or dm.project_id != project_id:
         raise ApiError(404, "not_found", "Domain model not found")
+    require_scoped(db, user, project_id, dm.case_id, Action.edit)
     content = ScenarioContent.model_validate(body.content)
     if content.discipline.value != dm.discipline:
         raise ApiError(422, "discipline_mismatch", "Scenario discipline must match its model")
     _check_engine(content)
     sc = Scenario(
         project_id=project_id,
+        case_id=dm.case_id,
         domain_model_id=dm.id,
         name=body.name,
         engine_id=content.engine_id,
@@ -77,7 +82,7 @@ def _scenario(db, user, scenario_id: str, action=Action.view) -> Scenario:
     sc = db.get(Scenario, scenario_id)
     if sc is None:
         raise ApiError(404, "not_found", "Scenario not found")
-    require_project(db, user, sc.project_id, action)
+    require_scoped(db, user, sc.project_id, sc.case_id, action)
     return sc
 
 

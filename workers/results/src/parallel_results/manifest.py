@@ -227,6 +227,7 @@ def case_section(db: Session, case: Case) -> dict[str, Any]:
             "measurement_unit": x.measurement_unit,
             "uncertainty": x.uncertainty,
             "limitation": x.limitation,
+            "based_on": list(x.based_on or []),
             "review_status": x.review_status,
         }
 
@@ -324,6 +325,16 @@ def case_section(db: Session, case: Case) -> dict[str, Any]:
     }
 
 
+def _case_object_ids(db: Session, case_id: str | None) -> list[str]:
+    """Reviewable case records (observations, interpretations, hypotheses) for a case report."""
+    if not case_id:
+        return []
+    return [
+        *db.scalars(select(EvidenceObservation.id).where(EvidenceObservation.case_id == case_id)),
+        *db.scalars(select(Hypothesis.id).where(Hypothesis.case_id == case_id)),
+    ]
+
+
 def build_manifest(db: Session, report: Report) -> dict[str, Any]:
     project = db.get(Project, report.project_id)
     author = db.get(User, report.author_id) if report.author_id else None
@@ -350,6 +361,7 @@ def build_manifest(db: Session, report: Report) -> dict[str, Any]:
                         *run_ids,
                         *[s["scenario"]["revision_id"] for s in sections],
                         *[s["domain_model"]["revision_id"] for s in sections],
+                        *_case_object_ids(db, report.case_id),
                     ]
                 ),
             )

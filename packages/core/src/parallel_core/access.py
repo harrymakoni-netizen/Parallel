@@ -106,6 +106,17 @@ def require_case(db: Session, user: User, case_id: str, action: Action = Action.
     return case
 
 
+def require_scoped(
+    db: Session, user: User, project_id: str, case_id: str | None, action: Action = Action.view
+) -> Project:
+    """Project-level objects follow project roles; case-scoped objects follow the case assignment."""
+    if case_id is None:
+        return require_project(db, user, project_id, action)
+    project = require_project(db, user, project_id)
+    require_case(db, user, case_id, action)
+    return project
+
+
 def visible_case_ids(db: Session, user: User, project_id: str) -> list[str]:
     return list(
         db.scalars(

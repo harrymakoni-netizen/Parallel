@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, Query, UploadFile
@@ -52,6 +54,22 @@ def list_batches(project_id: str, user: CurrentUser, db: DB):
     return db.scalars(
         select(CaptureBatch).where(CaptureBatch.project_id == project_id).order_by(CaptureBatch.created_at)
     ).all()
+
+
+@contextmanager
+def received_file(file: UploadFile) -> Iterator[Path]:
+    """Spool an upload to a temporary file, enforcing the upload size limit."""
+    limit = get_settings().max_upload_bytes
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / "upload"
+        size = 0
+        with open(tmp, "wb") as out:
+            while chunk := file.file.read(1 << 20):
+                size += len(chunk)
+                if size > limit:
+                    raise ApiError(413, "too_large", f"Upload exceeds the {limit} byte limit")
+                out.write(chunk)
+        yield tmp
 
 
 def store_upload(
@@ -119,16 +137,7 @@ def upload_asset(
         b = db.get(CaptureBatch, capture_batch_id)
         if b is None or b.project_id != project_id:
             raise ApiError(404, "not_found", "Capture batch not found")
-    limit = get_settings().max_upload_bytes
-    with tempfile.TemporaryDirectory() as td:
-        tmp = Path(td) / "upload"
-        size = 0
-        with open(tmp, "wb") as out:
-            while chunk := file.file.read(1 << 20):
-                size += len(chunk)
-                if size > limit:
-                    raise ApiError(413, "too_large", f"Upload exceeds the {limit} byte limit")
-                out.write(chunk)
+    with received_file(file) as tmp:
         a = store_upload(
             db,
             project_id=project_id,

@@ -201,6 +201,8 @@ class Annotation(IdMixin, TimestampMixin, Base):
 class DomainModel(IdMixin, TimestampMixin, Base):
     __tablename__ = "domain_model"
     project_id: Mapped[str] = fk("project.id")
+    # set for CrashLens analysis models: visible only to people assigned to that case
+    case_id: Mapped[str | None] = fk("crash_case.id", ondelete="RESTRICT", nullable=True)
     name: Mapped[str] = mapped_column(String(200))
     discipline: Mapped[str] = mapped_column(String(40))
     current_revision_id: Mapped[str | None] = mapped_column(String(32))
@@ -224,6 +226,7 @@ class DomainModelRevision(IdMixin, TimestampMixin, Base):
 class Scenario(IdMixin, TimestampMixin, Base):
     __tablename__ = "scenario"
     project_id: Mapped[str] = fk("project.id")
+    case_id: Mapped[str | None] = fk("crash_case.id", ondelete="RESTRICT", nullable=True)
     domain_model_id: Mapped[str] = fk("domain_model.id")
     name: Mapped[str] = mapped_column(String(200))
     engine_id: Mapped[str] = mapped_column(String(40))
@@ -282,6 +285,7 @@ class SimulationRun(IdMixin, TimestampMixin, Base):
         Index("ix_simulation_run_state_heartbeat", "state", "heartbeat_at"),
     )
     project_id: Mapped[str] = fk("project.id")
+    case_id: Mapped[str | None] = fk("crash_case.id", ondelete="RESTRICT", nullable=True)
     scenario_id: Mapped[str] = fk("scenario.id")
     scenario_revision_id: Mapped[str] = fk("scenario_revision.id", ondelete="RESTRICT")
     domain_model_revision_id: Mapped[str] = fk("domain_model_revision.id", ondelete="RESTRICT")
@@ -498,6 +502,9 @@ class EvidenceObservation(IdMixin, TimestampMixin, Base):
     measurement_unit: Mapped[str | None] = mapped_column(String(20))
     uncertainty: Mapped[dict | None] = mapped_column(J)
     limitation: Mapped[str] = mapped_column(Text, default="")
+    based_on: Mapped[list] = mapped_column(
+        J, default=list, server_default="[]"
+    )  # interpretations: the observation ids they reason from
     review_status: Mapped[str] = mapped_column(String(20), default="unreviewed")
     author_id: Mapped[str | None] = fk("app_user.id", ondelete="SET NULL", nullable=True)
 

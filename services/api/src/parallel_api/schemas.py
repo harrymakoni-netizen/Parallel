@@ -182,11 +182,13 @@ class DomainModelIn(BaseModel):
     name: str
     content: dict[str, Any] = Field(description="DomainModelEnvelope")
     message: str = ""
+    case_id: str | None = Field(default=None, description="CrashLens: scope the model to one case")
 
 
 class DomainModelOut(ORM):
     id: str
     project_id: str
+    case_id: str | None = None
     name: str
     discipline: str
     current_revision_id: str | None
@@ -216,6 +218,7 @@ class ScenarioIn(BaseModel):
 class ScenarioOut(ORM):
     id: str
     project_id: str
+    case_id: str | None = None
     domain_model_id: str
     name: str
     engine_id: str
@@ -241,6 +244,7 @@ class RunIn(BaseModel):
 class RunOut(ORM):
     id: str
     project_id: str
+    case_id: str | None = None
     scenario_id: str
     scenario_revision_id: str
     domain_model_revision_id: str
@@ -409,3 +413,270 @@ class ReviewOut(ORM):
     comment: str
     reviewer_id: str | None
     created_at: datetime
+
+
+# ---------------------------------------------------------------- CrashLens
+class CaseIn(BaseModel):
+    reference: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=2, max_length=300)
+    incident_at: datetime | None = None
+    location_note: str = ""
+    training: bool = False
+
+
+class CasePatch(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=300)
+    status: Literal["open", "closed"] | None = None
+    location_note: str | None = None
+
+
+class CaseOut(ORM):
+    id: str
+    project_id: str
+    reference: str
+    title: str
+    status: str
+    incident_at: datetime | None
+    location_note: str
+    training: bool
+    created_at: datetime
+    my_role: str | None = None
+
+
+class AssignmentIn(BaseModel):
+    user_id: str
+    role: Literal["investigator", "reviewer"]
+
+
+class AssignmentOut(ORM):
+    id: str
+    case_id: str
+    user_id: str
+    role: str
+    assigned_by: str | None
+    created_at: datetime
+
+
+class EvidenceOut(ORM):
+    id: str
+    case_id: str
+    source_asset_id: str | None
+    kind: str
+    title: str
+    description: str
+    claimed_captured_at: datetime | None
+    captured_by: str | None
+    source_metadata: dict[str, Any]
+    original_sha256: str | None
+    received_by: str | None
+    created_at: datetime
+    integrity_note: str = (
+        "A hash shows that a file is identical to the file that was hashed at receipt. It does not establish "
+        "that the contents are accurate or that embedded timestamps are authentic."
+    )
+
+
+class HandlingEventOut(ORM):
+    id: str
+    evidence_item_id: str
+    action: str
+    actor_id: str | None
+    details: dict[str, Any]
+    created_at: datetime
+
+
+class DerivativeOut(ORM):
+    id: str
+    evidence_item_id: str
+    kind: str
+    source_sha256: str
+    derived_asset_id: str
+    method: str
+    created_by: str | None
+    created_at: datetime
+
+
+SPATIAL_OBSERVATION_KINDS = {"skid_mark", "yaw_mark", "debris", "final_position", "scene_measurement"}
+
+
+class ObservationIn(BaseModel):
+    statement_type: Literal["observation", "interpretation"]
+    kind: Literal[
+        "skid_mark",
+        "yaw_mark",
+        "debris",
+        "final_position",
+        "road_condition",
+        "visibility",
+        "vehicle_damage",
+        "scene_measurement",
+        "other",
+    ]
+    text: str = Field(min_length=3, max_length=5000)
+    evidence_item_id: str | None = None
+    based_on: list[str] = Field(default_factory=list, description="Interpretations: observation ids reasoned from")
+    position: list[float] | None = Field(default=None, min_length=2, max_length=3)
+    geometry: dict[str, Any] | None = Field(default=None, description="Point/LineString/Polygon in local metres")
+    measurement_value: float | None = None
+    measurement_unit: str | None = None
+    uncertainty: dict[str, Any] | None = Field(default=None, description="Uncertainty contract")
+    limitation: str = ""
+
+
+class ObservationOut(ORM):
+    id: str
+    case_id: str
+    statement_type: str
+    kind: str
+    text: str
+    evidence_item_id: str | None
+    based_on: list[str]
+    position: list[float] | None
+    geometry: dict[str, Any] | None
+    measurement_value: float | None
+    measurement_unit: str | None
+    uncertainty: dict[str, Any] | None
+    limitation: str
+    review_status: str
+    author_id: str | None
+    created_at: datetime
+
+
+class VehicleIn(BaseModel):
+    label: str = Field(min_length=1, max_length=200)
+    make: str | None = None
+    model: str | None = None
+    year: int | None = Field(default=None, ge=1886, le=2100)
+    mass_kg: float | None = Field(default=None, gt=0)
+    length_m: float | None = Field(default=None, gt=0)
+    width_m: float | None = Field(default=None, gt=0)
+    wheelbase_m: float | None = Field(default=None, gt=0)
+    data_source: str = Field(min_length=3, description="Where the vehicle data came from")
+    provenance: dict[str, Any] = Field(description="Provenance contract")
+    notes: str = ""
+
+
+class VehicleOut(ORM):
+    id: str
+    case_id: str
+    label: str
+    make: str | None
+    model: str | None
+    year: int | None
+    mass_kg: float | None
+    length_m: float | None
+    width_m: float | None
+    wheelbase_m: float | None
+    data_source: str
+    provenance: dict[str, Any]
+    notes: str
+    created_at: datetime
+
+
+class WitnessIn(BaseModel):
+    reference: str = Field(min_length=1, max_length=120)
+    summary: str = ""
+    obtained_at: datetime | None = None
+    evidence_item_id: str | None = Field(default=None, description="Evidence item holding the statement document")
+
+
+class WitnessOut(ORM):
+    id: str
+    case_id: str
+    reference: str
+    summary: str
+    obtained_at: datetime | None
+    source_asset_id: str | None
+    created_at: datetime
+
+
+class TimelineIn(BaseModel):
+    t_offset_s: float | None = None
+    at: datetime | None = None
+    t_uncertainty_s: float | None = Field(default=None, ge=0)
+    description: str = Field(min_length=3, max_length=2000)
+    source_type: Literal["evidence", "witness", "record", "hypothesis"]
+    source_id: str | None = None
+    hypothesis_id: str | None = None
+
+
+class TimelineOut(ORM):
+    id: str
+    case_id: str
+    t_offset_s: float | None
+    at: datetime | None
+    t_uncertainty_s: float | None
+    description: str
+    source_type: str
+    source_id: str | None
+    hypothesis_id: str | None
+    created_at: datetime
+
+
+class HypothesisIn(BaseModel):
+    label: str = Field(min_length=2, max_length=200)
+    content: dict[str, Any] = Field(description="HypothesisContent")
+
+
+class HypothesisPatch(BaseModel):
+    label: str | None = Field(default=None, min_length=2, max_length=200)
+    content: dict[str, Any] | None = None
+    status: Literal["active", "set_aside", "retained"] | None = None
+
+
+class LinkIn(BaseModel):
+    observation_id: str
+    relation: Literal["supports", "contradicts", "context"]
+    rationale: str = Field(min_length=3, max_length=2000)
+
+
+class LinkOut(ORM):
+    id: str
+    hypothesis_id: str
+    observation_id: str
+    relation: str
+    rationale: str
+    created_by: str | None
+    created_at: datetime
+
+
+class HypothesisOut(ORM):
+    id: str
+    case_id: str
+    label: str
+    content: dict[str, Any]
+    status: str
+    created_by: str | None
+    created_at: datetime
+    links: list[LinkOut] = Field(default_factory=list)
+
+
+class SkidSpeedIn(BaseModel):
+    observation_id: str = Field(description="A skid-mark observation with a measured length in metres")
+    friction_low: float = Field(gt=0, le=1.5)
+    friction_high: float = Field(gt=0, le=1.5)
+    friction_basis: str = Field(min_length=3, description="Source of the friction range")
+
+
+class AnalysisIn(BaseModel):
+    run_id: str
+
+
+class CollisionTargetIn(BaseModel):
+    observation_id: str = Field(description="A located observation with an absolute position uncertainty")
+    kind: Literal["rest_position", "point_of_impact_area", "tyre_mark_start", "tyre_mark_end", "debris_centroid"]
+    vehicle_record_id: str | None = None
+    heading_deg: float | None = Field(default=None, description="Measured rest heading, if recorded")
+
+
+class CollisionModelIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    scene_revision_id: str | None = None
+    friction_low: float = Field(gt=0, le=1.5)
+    friction_high: float = Field(gt=0, le=1.5)
+    friction_basis: str = Field(min_length=3)
+    vehicle_record_ids: list[str] = Field(min_length=1, max_length=8)
+    targets: list[CollisionTargetIn] = Field(default_factory=list, max_length=40)
+    road_edge_observation_ids: list[str] = Field(
+        default_factory=list, description="Observations whose LineString geometry traces a road edge"
+    )

@@ -7,9 +7,9 @@ from sqlalchemy import select
 
 from parallel_contracts.domain import MODEL_KIND_DISCIPLINE, DomainModelEnvelope
 from parallel_contracts.runs import ValidationReport
-from parallel_core.access import Action, require_project
+from parallel_core.access import Action, require_project, require_scoped, visible_case_ids
 from parallel_core.audit import record as audit
-from parallel_core.models import DomainModel, DomainModelRevision
+from parallel_core.models import Case, DomainModel, DomainModelRevision
 from parallel_core.revisions import create_model_revision, publish, update_model_draft
 from parallel_engines.registry import all_adapters
 
@@ -46,16 +46,28 @@ def model_schemas():
 @router.get("/projects/{project_id}/models", response_model=list[DomainModelOut])
 def list_models(project_id: str, user: CurrentUser, db: DB):
     require_project(db, user, project_id)
+    cases = visible_case_ids(db, user, project_id)
     return db.scalars(
-        select(DomainModel).where(DomainModel.project_id == project_id).order_by(DomainModel.created_at)
+        select(DomainModel)
+        .where(
+            DomainModel.project_id == project_id,
+            DomainModel.case_id.is_(None) | DomainModel.case_id.in_(cases),
+        )
+        .order_by(DomainModel.created_at)
     ).all()
 
 
 @router.post("/projects/{project_id}/models", response_model=ModelRevisionOut, status_code=201)
 def create_model(project_id: str, body: DomainModelIn, user: CurrentUser, db: DB):
-    require_project(db, user, project_id, Action.edit)
+    if body.case_id:
+        case = db.get(Case, body.case_id)
+        if case is None or case.project_id != project_id:
+            raise ApiError(404, "not_found", "Case not found")
+    require_scoped(db, user, project_id, body.case_id, Action.edit)
     env = DomainModelEnvelope.model_validate(body.content)
-    dm = DomainModel(project_id=project_id, name=body.name, discipline=env.discipline.value)
+    dm = DomainModel(
+        project_id=project_id, case_id=body.case_id, name=body.name, discipline=env.discipline.value
+    )
     db.add(dm)
     db.flush()
     rev = create_model_revision(
@@ -77,7 +89,7 @@ def _model(db, user, model_id: str, action=Action.view) -> DomainModel:
     dm = db.get(DomainModel, model_id)
     if dm is None:
         raise ApiError(404, "not_found", "Model not found")
-    require_project(db, user, dm.project_id, action)
+    require_scoped(db, user, dm.project_id, dm.case_id, action)
     return dm
 
 
