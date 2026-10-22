@@ -3,7 +3,7 @@ name = "parallel-reconstruction"
 version = "0.1.0"
 description = "Capture processing and reconstruction worker."
 requires-python = ">=3.12"
-dependencies = ["parallel-core", "parallel-scene", "numpy==2.5.4", "pillow==13.0.0", "opencv-python-headless==5.0.0.93", "plyfile==1.1.5"]
+dependencies = ["parallel-core", "parallel-scene", "numpy==2.5.4", "pillow==13.0.0", "opencv-python-headless==5.0.0.93", "plyfile==1.1.5", "scipy==1.18.1"]
 
 [build-system]
 requires = ["hatchling"]

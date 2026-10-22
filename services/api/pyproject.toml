@@ -3,7 +3,7 @@ name = "parallel-api"
 version = "0.1.0"
 description = "Parallel application API."
 requires-python = ">=3.12"
-dependencies = ["parallel-core", "parallel-scene", "parallel-metrics", "fastapi==0.161.0", "uvicorn[standard]==0.54.0", "pyjwt[crypto]==2.15.1", "python-multipart==0.0.32", "httpx==0.28.1", "anthropic==2.1.0", "reportlab==5.1.0", "pyarrow==26.0.0", "pillow==13.0.0"]
+dependencies = ["parallel-core", "parallel-scene", "parallel-metrics", "parallel-reconstruction", "fastapi==0.161.0", "uvicorn[standard]==0.54.0", "pyjwt[crypto]==2.15.1", "python-multipart==0.0.32", "httpx==0.28.1", "anthropic==2.1.0", "reportlab==5.1.0", "pyarrow==26.0.0", "pillow==13.0.0"]
 
 [build-system]
 requires = ["hatchling"]
