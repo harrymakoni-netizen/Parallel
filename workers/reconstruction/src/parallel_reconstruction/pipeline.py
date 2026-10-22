@@ -43,8 +43,16 @@ from parallel_scene.transforms import apply, to_list, umeyama
 from . import colmap
 
 STAGES = [
-    "upload_verification", "media_inspection", "frame_extraction", "frame_filtering", "pose_estimation",
-    "reconstruction_training", "visual_export", "geometry_generation", "scale_orientation", "quality_assessment",
+    "upload_verification",
+    "media_inspection",
+    "frame_extraction",
+    "frame_filtering",
+    "pose_estimation",
+    "reconstruction_training",
+    "visual_export",
+    "geometry_generation",
+    "scale_orientation",
+    "quality_assessment",
     "scene_publication",
 ]
 
@@ -62,9 +70,24 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 }
 
 SPLATFACTO_PRESETS = {
-    "default": {"densify_grad_thresh": 0.0008, "stop_split_at": 15000, "cull_alpha_thresh": 0.1, "cull_scale_thresh": 0.5},
-    "aggressive": {"densify_grad_thresh": 0.0001, "stop_split_at": 25000, "cull_alpha_thresh": 0.05, "cull_scale_thresh": 0.5},
-    "refined": {"densify_grad_thresh": 0.0002, "stop_split_at": 15000, "cull_alpha_thresh": 0.1, "cull_scale_thresh": 0.2},
+    "default": {
+        "densify_grad_thresh": 0.0008,
+        "stop_split_at": 15000,
+        "cull_alpha_thresh": 0.1,
+        "cull_scale_thresh": 0.5,
+    },
+    "aggressive": {
+        "densify_grad_thresh": 0.0001,
+        "stop_split_at": 25000,
+        "cull_alpha_thresh": 0.05,
+        "cull_scale_thresh": 0.5,
+    },
+    "refined": {
+        "densify_grad_thresh": 0.0002,
+        "stop_split_at": 15000,
+        "cull_alpha_thresh": 0.1,
+        "cull_scale_thresh": 0.2,
+    },
 }
 
 
@@ -123,7 +146,9 @@ def upload_verification(ctx: PipelineContext) -> dict:
         p = ctx.fetch(a.storage_key, out / a.id / a.filename)
         actual = _sha(p)
         if a.sha256 and actual != a.sha256:
-            raise PipelineError(f"input {a.filename} hash mismatch: stored file differs from the uploaded file")
+            raise PipelineError(
+                f"input {a.filename} hash mismatch: stored file differs from the uploaded file"
+            )
         rows.append({"asset_id": a.id, "filename": a.filename, "kind": a.kind, "sha256": actual})
     if not any(r["kind"] in ("video", "image") for r in rows):
         raise PipelineError("capture batch has no photographs or video")
@@ -133,8 +158,11 @@ def upload_verification(ctx: PipelineContext) -> dict:
 def media_inspection(ctx: PipelineContext) -> dict:
     vids = [a for a in ctx.assets if a.kind == "video"]
     imgs = [a for a in ctx.assets if a.kind == "image"]
-    return {"videos": [{"filename": a.filename, **a.inspection} for a in vids],
-            "images": len(imgs), "image_sizes": sorted({(a.inspection.get("width"), a.inspection.get("height")) for a in imgs})}
+    return {
+        "videos": [{"filename": a.filename, **a.inspection} for a in vids],
+        "images": len(imgs),
+        "image_sizes": sorted({(a.inspection.get("width"), a.inspection.get("height")) for a in imgs}),
+    }
 
 
 def frame_extraction(ctx: PipelineContext) -> dict:
@@ -148,8 +176,22 @@ def frame_extraction(ctx: PipelineContext) -> dict:
         src = inputs / a.id / a.filename
         if a.kind == "video":
             stem = Path(a.filename).stem[:40]
-            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-vf", f"fps={rate}", "-q:v", "2",
-                            str(frames / f"{stem}_%05d.jpg")], check=True)
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(src),
+                    "-vf",
+                    f"fps={rate}",
+                    "-q:v",
+                    "2",
+                    str(frames / f"{stem}_%05d.jpg"),
+                ],
+                check=True,
+            )
         elif a.kind == "image":
             with Image.open(src) as im:
                 from PIL import ImageOps
@@ -193,9 +235,13 @@ def frame_filtering(ctx: PipelineContext) -> dict:
         reason = None
         if scores[n] < floor:
             reason = f"blurred (Laplacian variance {scores[n]:.1f} < {floor:.1f})"
-        elif last_kept is not None and bin(hashes[n] ^ hashes[last_kept]).count("1") <= int(ctx.settings["duplicate_hash_distance"]):
+        elif last_kept is not None and bin(hashes[n] ^ hashes[last_kept]).count("1") <= int(
+            ctx.settings["duplicate_hash_distance"]
+        ):
             reason = "near-duplicate of previous accepted frame"
-        records.append({"frame": n, "sharpness": round(scores[n], 2), "accepted": reason is None, "reason": reason})
+        records.append(
+            {"frame": n, "sharpness": round(scores[n], 2), "accepted": reason is None, "reason": reason}
+        )
         if reason is None:
             last_kept = n
             shutil.copy(src / n, keep_dir / n)
@@ -214,8 +260,12 @@ def frame_filtering(ctx: PipelineContext) -> dict:
     n_acc = sum(r["accepted"] for r in records)
     if n_acc < 3:
         raise PipelineError(f"only {n_acc} frames passed filtering")
-    return {"accepted": n_acc, "rejected": len(records) - n_acc, "sharpness_floor": round(floor, 2),
-            "median_sharpness": round(med, 2)}
+    return {
+        "accepted": n_acc,
+        "rejected": len(records) - n_acc,
+        "sharpness_floor": round(floor, 2),
+        "median_sharpness": round(med, 2),
+    }
 
 
 def pose_estimation(ctx: PipelineContext) -> dict:
@@ -231,11 +281,17 @@ def pose_estimation(ctx: PipelineContext) -> dict:
     shutil.rmtree(work / "sparse", ignore_errors=True)
     (work / "database.db").unlink(missing_ok=True)
     reg = len(model.images)
-    return {"colmap_version": colmap.colmap_version(), "images_input": n, "images_registered": reg,
-            "registered_fraction": reg / n, "points": int(len(model.xyz)),
-            "mean_reprojection_error_px": round(model.mean_reprojection_error, 4),
-            "mean_track_length": round(model.mean_track_length, 3), "camera": next(iter(model.cameras.values())),
-            "duration_s": round(time.time() - t0, 1)}
+    return {
+        "colmap_version": colmap.colmap_version(),
+        "images_input": n,
+        "images_registered": reg,
+        "registered_fraction": reg / n,
+        "points": int(len(model.xyz)),
+        "mean_reprojection_error_px": round(model.mean_reprojection_error, 4),
+        "mean_track_length": round(model.mean_track_length, 3),
+        "camera": next(iter(model.cameras.values())),
+        "duration_s": round(time.time() - t0, 1),
+    }
 
 
 def _gpu_available() -> tuple[bool, str]:
@@ -252,33 +308,74 @@ def reconstruction_training(ctx: PipelineContext) -> dict:
     ok, why = _gpu_available()
     preset = SPLATFACTO_PRESETS[ctx.settings.get("splatfacto_preset", "refined")]
     if not ok:
-        raise StageSkipped(f"GPU worker unavailable: {why}. Splatfacto training was not run.",
-                           {"availability": "worker_unavailable", "preset": preset})
+        raise StageSkipped(
+            f"GPU worker unavailable: {why}. Splatfacto training was not run.",
+            {"availability": "worker_unavailable", "preset": preset},
+        )
     # GPU worker path (nerfstudio, as in the reference pipeline): process COLMAP data and train Splatfacto.
     out = ctx.stage_dir("splatfacto")
     images = ctx.workdir / "frames_accepted"
-    subprocess.run(["ns-process-data", "images", "--data", str(images), "--output-dir", str(out / "processed")],
-                   check=True, stdout=open(ctx.log, "a"), stderr=subprocess.STDOUT)
-    subprocess.run(["ns-train", "splatfacto", "--data", str(out / "processed"), "--output-dir", str(out / "train"),
-                    "--pipeline.model.densify-grad-thresh", str(preset["densify_grad_thresh"]),
-                    "--pipeline.model.stop-split-at", str(preset["stop_split_at"]),
-                    "--pipeline.model.cull-scale-thresh", str(preset["cull_scale_thresh"]),
-                    "--pipeline.model.cull-alpha-thresh", str(preset["cull_alpha_thresh"]),
-                    "--max-num-iterations", "30000", "--viewer.quit-on-train-completion", "True"],
-                   check=True, stdout=open(ctx.log, "a"), stderr=subprocess.STDOUT)
-    cfg = next((out / "train").rglob("config.yml"))
-    subprocess.run(["ns-export", "gaussian-splat", "--load-config", str(cfg), "--output-dir", str(out / "export")],
-                   check=True, stdout=open(ctx.log, "a"), stderr=subprocess.STDOUT)
+    with open(ctx.log, "a") as logf:
+        subprocess.run(
+            ["ns-process-data", "images", "--data", str(images), "--output-dir", str(out / "processed")],
+            check=True,
+            stdout=logf,
+            stderr=subprocess.STDOUT,
+        )
+        subprocess.run(
+            [
+                "ns-train",
+                "splatfacto",
+                "--data",
+                str(out / "processed"),
+                "--output-dir",
+                str(out / "train"),
+                "--pipeline.model.densify-grad-thresh",
+                str(preset["densify_grad_thresh"]),
+                "--pipeline.model.stop-split-at",
+                str(preset["stop_split_at"]),
+                "--pipeline.model.cull-scale-thresh",
+                str(preset["cull_scale_thresh"]),
+                "--pipeline.model.cull-alpha-thresh",
+                str(preset["cull_alpha_thresh"]),
+                "--max-num-iterations",
+                "30000",
+                "--viewer.quit-on-train-completion",
+                "True",
+            ],
+            check=True,
+            stdout=logf,
+            stderr=subprocess.STDOUT,
+        )
+        cfg = next((out / "train").rglob("config.yml"))
+        subprocess.run(
+            ["ns-export", "gaussian-splat", "--load-config", str(cfg), "--output-dir", str(out / "export")],
+            check=True,
+            stdout=logf,
+            stderr=subprocess.STDOUT,
+        )
     return {"trained": True, "preset": preset, "splat": "splatfacto/export/splat.ply"}
 
 
 def visual_export(ctx: PipelineContext) -> dict:
     model = colmap.parse_txt(ctx.workdir / "colmap" / "sparse_txt")
     out = ctx.stage_dir("export")
-    ply.write_point_cloud(out / "sparse_points_capture.ply", model.xyz, model.rgb,
-                          comments=["Parallel sparse point cloud (COLMAP), capture frame"])
-    poses = [{"frame": im.name, "centre": im.centre.tolist(), "q_wxyz": im.q_wxyz.tolist(), "t": im.t.tolist(),
-              "observations": im.n_points} for im in model.images]
+    ply.write_point_cloud(
+        out / "sparse_points_capture.ply",
+        model.xyz,
+        model.rgb,
+        comments=["Parallel sparse point cloud (COLMAP), capture frame"],
+    )
+    poses = [
+        {
+            "frame": im.name,
+            "centre": im.centre.tolist(),
+            "q_wxyz": im.q_wxyz.tolist(),
+            "t": im.t.tolist(),
+            "observations": im.n_points,
+        }
+        for im in model.images
+    ]
     (out / "camera_poses.json").write_text(json.dumps(poses))
     trained = ctx.data.get("reconstruction_training", {}).get("trained", False)
     return {"points": int(len(model.xyz)), "trained_splat": trained}
@@ -293,8 +390,10 @@ def geometry_generation(ctx: PipelineContext) -> dict:
     cams = np.array([im.centre for im in model.images])
     if np.mean(cams @ n + d) < 0:  # orient the normal towards the cameras (up)
         n, d = -n, -d
-    data = {"ground_plane": {"normal": n.tolist(), "d": d, "inlier_fraction": round(frac, 3), "frame": "capture"},
-            "collision_mesh": "not generated (Open3D Poisson reconstruction not installed on this worker)"}
+    data = {
+        "ground_plane": {"normal": n.tolist(), "d": d, "inlier_fraction": round(frac, 3), "frame": "capture"},
+        "collision_mesh": "not generated (Open3D Poisson reconstruction not installed on this worker)",
+    }
     return data
 
 
@@ -316,7 +415,11 @@ def scale_orientation(ctx: PipelineContext) -> dict:
         with open(ref_path) as f:
             for r in csv.DictReader(f):
                 refs[Path(r["frame"]).stem] = [float(r["x"]), float(r["y"]), float(r["z"])]
-    pairs = [(Path(im.name).stem, im.centre, refs[Path(im.name).stem]) for im in model.images if Path(im.name).stem in refs]
+    pairs = [
+        (Path(im.name).stem, im.centre, refs[Path(im.name).stem])
+        for im in model.images
+        if Path(im.name).stem in refs
+    ]
     if len(pairs) >= 3:
         # Control/check split: every third surveyed position is held out as an independent check point.
         check_idx = set(range(2, len(pairs), 3)) if len(pairs) >= 6 else set()
@@ -329,14 +432,29 @@ def scale_orientation(ctx: PipelineContext) -> dict:
         check_points = []
         for name, c, ref in checks:
             est = apply(m, c)
-            check_points.append({"frame": name, "estimated": est.tolist(), "reference": list(ref),
-                                 "residual_m": float(np.linalg.norm(est - np.array(ref)))})
-        check_rms = float(np.sqrt(np.mean([c["residual_m"] ** 2 for c in check_points]))) if check_points else None
-        return {"method": f"similarity from {len(control)} surveyed camera positions (Umeyama least squares); "
-                          f"{len(checks)} positions held out as check points", "matrix": to_list(m),
-                "scale_established": True, "residual_rms_m": rms, "pairs": len(control), "scale": scale,
-                "check_points": check_points, "check_rms_m": check_rms,
-                "reference_source": ctx.settings.get("reference_source", "camera_positions.csv")}
+            check_points.append(
+                {
+                    "frame": name,
+                    "estimated": est.tolist(),
+                    "reference": list(ref),
+                    "residual_m": float(np.linalg.norm(est - np.array(ref))),
+                }
+            )
+        check_rms = (
+            float(np.sqrt(np.mean([c["residual_m"] ** 2 for c in check_points]))) if check_points else None
+        )
+        return {
+            "method": f"similarity from {len(control)} surveyed camera positions (Umeyama least squares); "
+            f"{len(checks)} positions held out as check points",
+            "matrix": to_list(m),
+            "scale_established": True,
+            "residual_rms_m": rms,
+            "pairs": len(control),
+            "scale": scale,
+            "check_points": check_points,
+            "check_rms_m": check_rms,
+            "reference_source": ctx.settings.get("reference_source", "camera_positions.csv"),
+        }
     plane = ctx.data.get("geometry_generation", {}).get("ground_plane")
     if plane:
         n = np.array(plane["normal"])
@@ -345,9 +463,20 @@ def scale_orientation(ctx: PipelineContext) -> dict:
         m[:3, :3] = r
         # n.x + d = 0 maps to z' = n.x = -d after rotating n onto +Z; translate by +d to put the plane at z = 0
         m[2, 3] = float(plane["d"])
-        return {"method": "orientation from dominant ground plane only (scale unknown)", "matrix": to_list(m),
-                "scale_established": False, "residual_rms_m": None, "pairs": 0}
-    return {"method": "none", "matrix": to_list(np.eye(4)), "scale_established": False, "residual_rms_m": None, "pairs": 0}
+        return {
+            "method": "orientation from dominant ground plane only (scale unknown)",
+            "matrix": to_list(m),
+            "scale_established": False,
+            "residual_rms_m": None,
+            "pairs": 0,
+        }
+    return {
+        "method": "none",
+        "matrix": to_list(np.eye(4)),
+        "scale_established": False,
+        "residual_rms_m": None,
+        "pairs": 0,
+    }
 
 
 def quality_assessment(ctx: PipelineContext) -> dict:
@@ -357,8 +486,12 @@ def quality_assessment(ctx: PipelineContext) -> dict:
     m = np.array(so["matrix"])
     xyz = apply(m, model.xyz) if len(model.xyz) else model.xyz
     out = ctx.stage_dir("export")
-    ply.write_point_cloud(out / "sparse_points.ply", xyz, model.rgb,
-                          comments=["Parallel sparse point cloud (COLMAP), canonical frame"])
+    ply.write_point_cloud(
+        out / "sparse_points.ply",
+        xyz,
+        model.rgb,
+        comments=["Parallel sparse point cloud (COLMAP), canonical frame"],
+    )
     _gaussian_initialisation(out / "gaussian_initialisation.ply", xyz, model.rgb)
     checks = []
     cps = so.get("check_points") or []
@@ -370,14 +503,26 @@ def quality_assessment(ctx: PipelineContext) -> dict:
                 ref = float(np.linalg.norm(np.array(cps[i]["reference"]) - np.array(cps[j]["reference"])))
                 cand.append((ref, i, j))
         for ref, i, j in sorted(cand, reverse=True)[:3]:
-            checks.append({"label": f"camera {cps[i]['frame']} to camera {cps[j]['frame']}",
-                           "point_a": cps[i]["estimated"], "point_b": cps[j]["estimated"], "reference_m": ref,
-                           "source": "held-out surveyed camera positions (check points not used for the alignment)"})
+            checks.append(
+                {
+                    "label": f"camera {cps[i]['frame']} to camera {cps[j]['frame']}",
+                    "point_a": cps[i]["estimated"],
+                    "point_b": cps[j]["estimated"],
+                    "reference_m": ref,
+                    "source": "held-out surveyed camera positions (check points not used for the alignment)",
+                }
+            )
     registered_ok = pe["registered_fraction"] >= float(ctx.settings["registered_fraction_required"])
-    return {"visual_reconstruction_available": registered_ok and pe["points"] > 100,
-            "registered_fraction": pe["registered_fraction"], "mean_reprojection_error_px": pe["mean_reprojection_error_px"],
-            "points": pe["points"], "scale_established": so["scale_established"], "alignment_rms_m": so["residual_rms_m"],
-            "check_rms_m": so.get("check_rms_m"), "measurement_checks": checks}
+    return {
+        "visual_reconstruction_available": registered_ok and pe["points"] > 100,
+        "registered_fraction": pe["registered_fraction"],
+        "mean_reprojection_error_px": pe["mean_reprojection_error_px"],
+        "points": pe["points"],
+        "scale_established": so["scale_established"],
+        "alignment_rms_m": so["residual_rms_m"],
+        "check_rms_m": so.get("check_rms_m"),
+        "measurement_checks": checks,
+    }
 
 
 def _gaussian_initialisation(path: Path, xyz: np.ndarray, rgb: np.ndarray) -> None:
@@ -391,9 +536,15 @@ def _gaussian_initialisation(path: Path, xyz: np.ndarray, rgb: np.ndarray) -> No
     dist, _ = tree.query(xyz, k=k)
     mean_d = np.clip(dist[:, 1:].mean(axis=1) if k > 1 else np.full(len(xyz), 0.05), 1e-3, 0.5)
     log_s = np.log(np.repeat(mean_d[:, None], 3, axis=1) * 0.6)
-    ply.write_gaussians(path, xyz, ply.rgb_to_sh_dc(rgb / 255.0), np.full(len(xyz), 2.0), log_s,
-                        np.tile([1.0, 0.0, 0.0, 0.0], (len(xyz), 1)),
-                        comments=["UNTRAINED Gaussian initialisation from SfM points; not a trained reconstruction"])
+    ply.write_gaussians(
+        path,
+        xyz,
+        ply.rgb_to_sh_dc(rgb / 255.0),
+        np.full(len(xyz), 2.0),
+        log_s,
+        np.tile([1.0, 0.0, 0.0, 0.0], (len(xyz), 1)),
+        comments=["UNTRAINED Gaussian initialisation from SfM points; not a trained reconstruction"],
+    )
 
 
 STAGE_FUNCS: dict[str, Callable[[PipelineContext], dict]] = {

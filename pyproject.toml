@@ -34,6 +34,7 @@ parallel-results = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "pypdf==6.21.2",
     "pytest==9.1.1",
     "ruff==0.17.2",
 ]
@@ -63,6 +64,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Depends", "fastapi.Query", "fastapi.Header"]
 
 [tool.ruff.lint.isort]
 known-first-party = [

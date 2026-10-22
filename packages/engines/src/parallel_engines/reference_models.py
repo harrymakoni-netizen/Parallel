@@ -372,14 +372,11 @@ def water_network_model() -> DomainModelEnvelope:
         WaterTank,
     )
 
-    j = lambda i, x, y, z, q: WaterJunction(
-        id=i,
-        position=[x, y],
-        elevation_m=z,
-        base_demand_lps=q,  # noqa: E731
-        pattern_id="domestic",
-        provenance=SYN,
-    )
+    def j(i: str, x: float, y: float, z: float, q: float) -> WaterJunction:
+        return WaterJunction(
+            id=i, position=[x, y], elevation_m=z, base_demand_lps=q, pattern_id="domestic", provenance=SYN
+        )
+
     content = WaterNetworkModel(
         vertical_reference="Local site datum (synthetic)",
         reservoirs=[WaterReservoir(id="R1", position=[-200, 0], head_m=70.0, provenance=SYN)],

@@ -25,7 +25,15 @@ from parallel_core.storage import get_storage
 from parallel_scene.measurement import evaluate
 
 from . import pipeline
-from .pipeline import STAGE_FUNCS, STAGE_OUTPUTS, STAGES, InputAsset, PipelineContext, PipelineError, StageSkipped
+from .pipeline import (
+    STAGE_FUNCS,
+    STAGE_OUTPUTS,
+    STAGES,
+    InputAsset,
+    PipelineContext,
+    PipelineError,
+    StageSkipped,
+)
 
 
 def _set_stage(job_id: str, name: str, **fields) -> None:
@@ -123,10 +131,7 @@ def execute_job(job_id: str) -> str:
             _set_stage(job_id, name, status="running", started_at=utcnow().isoformat(), message=None)
             t0 = time.time()
             try:
-                if name == "scene_publication":
-                    data = publish_scene(job_id, ctx)
-                else:
-                    data = STAGE_FUNCS[name](ctx)
+                data = publish_scene(job_id, ctx) if name == "scene_publication" else STAGE_FUNCS[name](ctx)
                 status, message = "completed", None
             except StageSkipped as sk:
                 data, status, message = sk.data, "skipped", str(sk)
@@ -190,7 +195,7 @@ def publish_scene(job_id: str, ctx: PipelineContext) -> dict:
                            "COLMAP sparse point cloud (canonical frame)")
         gi = _store_output(db, ctx.project_id, batch.id, export / "gaussian_initialisation.ply", "gaussian",  # type: ignore[union-attr]
                            "UNTRAINED Gaussian initialisation from SfM points")
-        poses = _store_output(db, ctx.project_id, batch.id, export / "camera_poses.json", "model", "Camera poses (capture frame)")  # type: ignore[union-attr]
+        _store_output(db, ctx.project_id, batch.id, export / "camera_poses.json", "model", "Camera poses (capture frame)")  # type: ignore[union-attr]
         visual = [
             VisualAsset(id="sparse_points", asset_id=pc.id, kind="point_cloud", format="ply", label="Sparse point cloud (COLMAP)",
                         quality_notes=[f"{pe['points']} points, mean reprojection error {pe['mean_reprojection_error_px']} px"]),

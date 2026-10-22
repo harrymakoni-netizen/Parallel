@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
@@ -57,10 +58,8 @@ def sync_capabilities() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
+    with contextlib.suppress(Exception):  # database not migrated yet; the health endpoint reports it
         sync_capabilities()
-    except Exception:  # database not migrated yet; health endpoint reports it
-        pass
     yield
 
 

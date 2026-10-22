@@ -75,7 +75,8 @@ def classify(filename: str) -> str:
 
 
 def _sniff(path: Path, kind: str) -> None:
-    head = path.read_bytes()[:16] if path.stat().st_size < 16 else open(path, "rb").read(16)
+    with path.open("rb") as f:
+        head = f.read(16)
     sigs = MAGIC.get(kind)
     if sigs is None:
         return

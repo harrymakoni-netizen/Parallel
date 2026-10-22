@@ -3,20 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from parallel_contracts.coordinates import GeoReference
-
-T = TypeVar("T")
 
 
 class ORM(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PageOut(BaseModel, Generic[T]):
+class PageOut[T](BaseModel):
     items: list[T]
     total: int
     limit: int
@@ -363,8 +361,11 @@ class ReportIn(BaseModel):
     run_ids: list[str] = Field(default_factory=list)
     comparison_id: str | None = None
     case_id: str | None = None
-    narrative: str | None = None
+    narrative: str | None = Field(default=None, max_length=20000)
     narrative_origin: Literal["manual", "ai_draft_adopted"] | None = None
+    figure_asset_ids: list[str] = Field(
+        default_factory=list, max_length=12, description="Scene screenshots or other non-evidence images to include"
+    )
 
 
 class ReportOut(ORM):

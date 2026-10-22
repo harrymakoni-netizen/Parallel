@@ -6,6 +6,7 @@ The database remains the durable record; events are best-effort notifications
 
 from __future__ import annotations
 
+import contextlib
 import json
 from functools import lru_cache
 from typing import Any
@@ -25,10 +26,8 @@ def channel(kind: str, object_id: str) -> str:
 
 
 def publish(kind: str, object_id: str, payload: dict[str, Any]) -> None:
-    try:
+    with contextlib.suppress(redis.RedisError):  # notifications are best effort; state is in the database
         _client().publish(channel(kind, object_id), json.dumps(payload, default=str))
-    except redis.RedisError:
-        pass  # notifications are best effort; state is in the database
 
 
 def subscribe(kind: str, object_id: str):
