@@ -1,0 +1,18 @@
+# Files that run inside Linux containers must keep LF line endings; a Windows checkout with
+# core.autocrlf would otherwise turn "#!/bin/sh" into "#!/bin/sh\r" and the script would not run.
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+*.conf text eol=lf
+*.template text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+*.png binary
+*.webp binary
+*.jpg binary
+*.pdf binary
+*.ply binary
