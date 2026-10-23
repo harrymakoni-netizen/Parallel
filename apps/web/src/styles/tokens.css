@@ -1,0 +1,128 @@
+/* Parallel design tokens: midnight navy surfaces, electric cyan accents.
+   Dark ("midnight") is the default; light follows the OS or the theme toggle.
+   Chart colours are the validated categorical slots (checked against these surfaces). */
+
+:root {
+  color-scheme: dark;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --brand-navy: #03193a;
+  --brand-cyan: #00a5fd;
+
+  --bg: #061227;
+  --surface-1: #0e1d36;
+  --surface-2: #132745;
+  --surface-3: #1a3256;
+  --surface-sunken: #08162d;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text-1: #eef3fb;
+  --text-2: #b9c6da;
+  --text-muted: #8d9bb1;
+  --accent: #00a5fd;
+  --accent-text: #4cc1ff;
+  --accent-ink: #021430;
+  --accent-wash: rgba(0, 165, 253, 0.14);
+  --focus: #7fd4ff;
+  --danger-text: #ff8a8a;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-good-text: #4fd34f;
+  --status-warning-text: #ffc95a;
+  --status-critical-text: #ff7d7d;
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-axis: rgba(255, 255, 255, 0.22);
+  --chart-muted: #8d9bb1;
+  --chart-surface: #0e1d36;
+
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --topbar-h: 60px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:where(:not([data-theme="dark"])) {
+    color-scheme: light;
+    --bg: #f3f6fb;
+    --surface-1: #ffffff;
+    --surface-2: #f6f8fc;
+    --surface-3: #e9eef7;
+    --surface-sunken: #eef2f8;
+    --border: rgba(3, 25, 58, 0.12);
+    --border-strong: rgba(3, 25, 58, 0.24);
+    --text-1: #0b1424;
+    --text-2: #3f4c63;
+    --text-muted: #5f6b80;
+    --accent: #0077bd;
+    --accent-text: #0067a6;
+    --accent-ink: #ffffff;
+    --accent-wash: rgba(0, 119, 189, 0.1);
+    --focus: #0067a6;
+    --danger-text: #b42323;
+    --status-good-text: #006300;
+    --status-warning-text: #8a5a00;
+    --status-critical-text: #b42323;
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
+    --chart-3: #1baf7a;
+    --chart-4: #eda100;
+    --chart-grid: #e1e0d9;
+    --chart-axis: #c3c2b7;
+    --chart-muted: #6c6a64;
+    --chart-surface: #ffffff;
+    --shadow: 0 8px 24px rgba(3, 25, 58, 0.12);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --surface-1: #ffffff;
+  --surface-2: #f6f8fc;
+  --surface-3: #e9eef7;
+  --surface-sunken: #eef2f8;
+  --border: rgba(3, 25, 58, 0.12);
+  --border-strong: rgba(3, 25, 58, 0.24);
+  --text-1: #0b1424;
+  --text-2: #3f4c63;
+  --text-muted: #5f6b80;
+  --accent: #0077bd;
+  --accent-text: #0067a6;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(0, 119, 189, 0.1);
+  --focus: #0067a6;
+  --danger-text: #b42323;
+  --status-good-text: #006300;
+  --status-warning-text: #8a5a00;
+  --status-critical-text: #b42323;
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-muted: #6c6a64;
+  --chart-surface: #ffffff;
+  --shadow: 0 8px 24px rgba(3, 25, 58, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

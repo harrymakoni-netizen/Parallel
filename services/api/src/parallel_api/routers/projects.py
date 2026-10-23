@@ -180,13 +180,20 @@ def archive_project(project_id: str, user: CurrentUser, db: DB):
 @router.get("/{project_id}/overview")
 def overview(project_id: str, user: CurrentUser, db: DB):
     p = require_project(db, user, project_id)
+    cases = visible_case_ids(db, user, p.id)
 
     def count(model, col):
-        return db.scalar(select(func.count()).select_from(model).where(col == p.id)) or 0
+        q = select(func.count()).select_from(model).where(col == p.id)
+        if hasattr(model, "case_id"):  # case-scoped records count only for people assigned to the case
+            q = q.where(model.case_id.is_(None) | model.case_id.in_(cases))
+        if model is SourceAsset:  # evidence media is reachable only through its case
+            q = q.where(SourceAsset.sensitivity == "normal")
+        return db.scalar(q) or 0
 
     runs = db.execute(
         select(SimulationRun.state, func.count())
-        .where(SimulationRun.project_id == p.id)
+        .where(SimulationRun.project_id == p.id,
+               SimulationRun.case_id.is_(None) | SimulationRun.case_id.in_(cases))
         .group_by(SimulationRun.state)
     ).all()
     scenes = db.scalars(select(Scene).where(Scene.project_id == p.id)).all()

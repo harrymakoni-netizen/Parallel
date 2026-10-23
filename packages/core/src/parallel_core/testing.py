@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -61,6 +62,8 @@ def configure_environment(url: str, tmp: Path, eager: bool = True) -> None:
     os.environ["PARALLEL_TASK_ALWAYS_EAGER"] = "1" if eager else "0"
     os.environ["PARALLEL_ENVIRONMENT"] = "test"
     os.environ.setdefault("PARALLEL_SECRET_KEY", "test-secret-key-for-parallel-tests-0123456789")
+    # a Redis database of its own, so a development worker on the same host never takes test tasks
+    os.environ["PARALLEL_REDIS_URL"] = os.environ.get("PARALLEL_TEST_REDIS_URL", "redis://localhost:6379/15")
     reset_caches()
 
 
@@ -72,3 +75,7 @@ def reset_caches() -> None:
     db._factory.cache_clear()
     storage.get_storage.cache_clear()
     events._client.cache_clear()
+    jobs = sys.modules.get("parallel_core.jobs")
+    if jobs is not None:  # the Celery app is built at import; point it at the current broker
+        url = settings.get_settings().redis_url
+        jobs.celery_app.conf.update(broker_url=url, result_backend=url)

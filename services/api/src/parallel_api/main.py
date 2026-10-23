@@ -104,6 +104,13 @@ def create_app() -> FastAPI:
     ):
         api.include_router(r.router)
 
+    @api.get("/metrics", tags=["meta"])
+    def metric_registry() -> list[dict]:
+        """Documented metric definitions: identifier, unit, definition, calculation and missing-value rule."""
+        from parallel_metrics.registry import METRICS
+
+        return [m.model_dump(mode="json") for m in METRICS.values()]
+
     @api.get("/health", tags=["meta"])
     def health() -> dict:
         ok_db = True
