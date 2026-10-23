@@ -81,6 +81,20 @@ docker build --build-arg HTTPS_PROXY=$HTTPS_PROXY --secret id=ca,src=/path/to/ca
 | Results worker | `parallel-app` with `-Q results`. |
 | Scheduler | Exactly one `celery beat` (recovery sweep every minute, engine availability every five minutes). |
 
+### HTTPS on a single host
+
+`compose.https.yaml` adds Caddy in front of the stack, which obtains and renews a certificate for
+`PARALLEL_DOMAIN`. Point the name's DNS record at the host, open ports 80 and 443, set
+`PARALLEL_DOMAIN`, `PARALLEL_PUBLIC_BASE_URL` and `PARALLEL_WEB_ORIGIN` (both `https://` and the same
+name) in `.env`, and start with:
+
+```bash
+docker compose -f compose.yaml -f compose.https.yaml up -d --build
+```
+
+The web container then publishes no port of its own. A full Google Cloud walk-through is in
+[google-cloud.md](google-cloud.md).
+
 ### Browser application on Vercel
 
 `apps/web/vercel.json` deploys the browser application to Vercel (root directory `apps/web`, Vite build,

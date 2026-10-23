@@ -1,0 +1,9 @@
+# TLS terminator for compose.https.yaml. Caddy obtains and renews the certificate for
+# PARALLEL_DOMAIN by itself; ports 80 and 443 must reach this host for that to work.
+{$PARALLEL_DOMAIN} {
+	encode zstd gzip
+	# Progress streams are long-lived; do not buffer them.
+	reverse_proxy web:8080 {
+		flush_interval -1
+	}
+}

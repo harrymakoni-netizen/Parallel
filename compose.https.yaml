@@ -1,0 +1,29 @@
+# HTTPS in front of the stack, for a host with a public name:
+#
+#   PARALLEL_DOMAIN=parallel.example.org in .env (and PARALLEL_PUBLIC_BASE_URL / PARALLEL_WEB_ORIGIN
+#   set to https://parallel.example.org), then
+#   docker compose -f compose.yaml -f compose.https.yaml up -d --build
+#
+# The web container is then reachable only through Caddy.
+services:
+  caddy:
+    image: ${PARALLEL_CADDY_IMAGE:-caddy:2}
+    environment:
+      PARALLEL_DOMAIN: ${PARALLEL_DOMAIN:?set PARALLEL_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  web:
+    ports: !reset []
+
+volumes:
+  caddy_data:
+  caddy_config:
