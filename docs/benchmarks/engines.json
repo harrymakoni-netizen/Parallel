@@ -1,0 +1,221 @@
+{
+ "recorded_at": "2026-10-23T06:47:01.559650+00:00",
+ "hardware": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "logical_cpus": 4,
+  "memory_gb": 15.7,
+  "os": "Linux 6.18.44-fc-v153",
+  "python": "3.13.16",
+  "gpu": "none (CPU only)"
+ },
+ "mode": "in-process API, tasks executed eagerly (queue latency excluded)",
+ "workloads": {
+  "pedestrian_100": {
+   "workload": "JuPedSim evacuation of a level mine section, 100 agents, dt 0.01 s, CollisionFreeSpeedModel",
+   "agents": 100,
+   "engine": "1.4.2",
+   "end_to_end": {
+    "median_s": 1.72,
+    "min_s": 1.67,
+    "max_s": 1.85,
+    "n": 3
+   },
+   "engine_execution": {
+    "median_s": 1.25,
+    "min_s": 1.25,
+    "max_s": 1.25,
+    "n": 3
+   },
+   "stages_last_run_s": {
+    "draft": 0.002,
+    "validating": 0.002,
+    "queued": 0.011,
+    "preparing": 0.046,
+    "running": 1.251,
+    "collecting": 0.013,
+    "postprocessing": 0.153
+   },
+   "outputs_mb": 0.58,
+   "playback_mb": 0.09,
+   "run_ids": [
+    "c8f7818e0c514412a034e9170077b67f",
+    "bfc41de6904e479ea043ed892f2825ac",
+    "4e1a5dc228a4433c908984c7a006387f"
+   ]
+  },
+  "pedestrian_160_congested": {
+   "workload": "JuPedSim evacuation of a level mine section, 160 agents, dt 0.01 s, CollisionFreeSpeedModel",
+   "agents": 160,
+   "engine": "1.4.2",
+   "end_to_end": {
+    "median_s": 3.76,
+    "min_s": 3.58,
+    "max_s": 4.45,
+    "n": 3
+   },
+   "engine_execution": {
+    "median_s": 1.86,
+    "min_s": 1.85,
+    "max_s": 2.09,
+    "n": 3
+   },
+   "stages_last_run_s": {
+    "draft": 0.003,
+    "validating": 0.002,
+    "queued": 0.172,
+    "preparing": 1.78,
+    "running": 2.091,
+    "collecting": 0.01,
+    "postprocessing": 0.145
+   },
+   "outputs_mb": 0.88,
+   "playback_mb": 0.14,
+   "run_ids": [
+    "841d645bbc264fe689301b444050fa16",
+    "2a41b375ebe04418aa070780d4582895",
+    "b1fae71dcc9b45df9a7bf9b76d2c0695"
+   ]
+  },
+  "traffic_small_network": {
+   "workload": "SUMO, priority junction corridor (4 approaches, 30 network objects), 1 h demand",
+   "engine": "1.28.0",
+   "end_to_end": {
+    "median_s": 4.69,
+    "min_s": 4.54,
+    "max_s": 4.92,
+    "n": 3
+   },
+   "engine_execution": {
+    "median_s": 3.68,
+    "min_s": 3.46,
+    "max_s": 3.71,
+    "n": 3
+   },
+   "stages_last_run_s": {
+    "draft": 0.006,
+    "validating": 0.001,
+    "queued": 0.009,
+    "preparing": 0.019,
+    "running": 3.706,
+    "collecting": 0.209,
+    "postprocessing": 0.505
+   },
+   "outputs_mb": 8.48,
+   "playback_mb": 1.08,
+   "run_ids": [
+    "3d0b40b9681743828a1f91653ac38dc7",
+    "bc1f44875f1541dbb530c06212b1b508",
+    "a2f6d12849e24a53a2e34bdac237547d"
+   ]
+  },
+  "drainage_small_network": {
+   "workload": "SWMM, 4 junctions, 4 conduits, 1 outfall, 60 min design storm",
+   "engine": "5.2.4",
+   "end_to_end": {
+    "median_s": 0.71,
+    "min_s": 0.53,
+    "max_s": 0.86,
+    "n": 3
+   },
+   "engine_execution": {
+    "median_s": 0.25,
+    "min_s": 0.24,
+    "max_s": 0.46,
+    "n": 3
+   },
+   "stages_last_run_s": {
+    "draft": 0.003,
+    "validating": 0.002,
+    "queued": 0.007,
+    "preparing": 0.019,
+    "running": 0.242,
+    "collecting": 0.013,
+    "postprocessing": 0.031
+   },
+   "outputs_mb": 0.43,
+   "playback_mb": 0.0,
+   "run_ids": [
+    "0dccb371a0e34c91a3b52136310c95df",
+    "4b1829003ada4f0a89e2122ee78a287d",
+    "54d1028d17664e3299cf54a074ace83f"
+   ]
+  },
+  "operations_des": {
+   "workload": "SimPy, site delivery operations, 10 replications with common random numbers",
+   "engine": "4.1.2",
+   "end_to_end": {
+    "median_s": 0.5,
+    "min_s": 0.47,
+    "max_s": 0.52,
+    "n": 3
+   },
+   "engine_execution": {
+    "median_s": 0.25,
+    "min_s": 0.25,
+    "max_s": 0.27,
+    "n": 3
+   },
+   "stages_last_run_s": {
+    "draft": 0.002,
+    "validating": 0.001,
+    "queued": 0.007,
+    "preparing": 0.025,
+    "running": 0.249,
+    "collecting": 0.01,
+    "postprocessing": 0.036
+   },
+   "outputs_mb": 0.27,
+   "playback_mb": 0.0,
+   "run_ids": [
+    "08c0823d386b4bb3af3f7fc15a3e37d9",
+    "3dbb78001ded4ff494c4e22b83f374c7",
+    "666d140fd01d40c89732e7e9f6c865d0"
+   ]
+  },
+  "report_generation": {
+   "workload": "PDF, CSV and JSON report of a three-run comparison (charts with table twins, provenance)",
+   "end_to_end": {
+    "median_s": 0.77,
+    "min_s": 0.32,
+    "max_s": 0.78,
+    "n": 3
+   }
+  },
+  "reconstruction_36_frames": {
+   "workload": "36 synthetic photographs (560 x 420 px) of the training road scene; COLMAP 3.9.1 sparse reconstruction on CPU, scale alignment, checks, point cloud and Gaussian initialisation",
+   "frames": 36,
+   "end_to_end_s": 24.48,
+   "stages_s": {
+    "upload_verification": 0.05,
+    "media_inspection": 0.01,
+    "frame_extraction": 2.26,
+    "frame_filtering": 0.47,
+    "pose_estimation": 20.8,
+    "reconstruction_training": 0.01,
+    "visual_export": 0.03,
+    "geometry_generation": 0.1,
+    "scale_orientation": 0.02,
+    "quality_assessment": 0.48,
+    "scene_publication": 0.04
+   }
+  },
+  "reconstruction_72_frames": {
+   "workload": "72 synthetic photographs (560 x 420 px) of the training road scene; COLMAP 3.9.1 sparse reconstruction on CPU, scale alignment, checks, point cloud and Gaussian initialisation",
+   "frames": 72,
+   "end_to_end_s": 70.22,
+   "stages_s": {
+    "upload_verification": 0.09,
+    "media_inspection": 0.01,
+    "frame_extraction": 3.76,
+    "frame_filtering": 0.63,
+    "pose_estimation": 65.26,
+    "reconstruction_training": 0.01,
+    "visual_export": 0.04,
+    "geometry_generation": 0.14,
+    "scale_orientation": 0.04,
+    "quality_assessment": 0.05,
+    "scene_publication": 0.03
+   }
+  }
+ }
+}

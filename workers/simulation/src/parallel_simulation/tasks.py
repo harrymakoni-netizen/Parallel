@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from parallel_core import runs
+from celery.signals import worker_ready, worker_shutdown
+
+from parallel_core import engine_status, runs
 from parallel_core.jobs import (
+    TASK_ENGINE_STATUS,
     TASK_EXECUTE_RUN,
     TASK_IMPORT_RESULT,
     TASK_OPTIMISATION,
@@ -46,3 +49,26 @@ def run_optimisation(study_id: str) -> str:
     from parallel_core.optimisation import run_study
 
     return run_study(study_id)
+
+
+def _queues(consumer) -> set[str] | None:
+    try:
+        return {q.name for q in consumer.task_consumer.queues}
+    except Exception:  # queue introspection is best effort; report every managed engine instead
+        return None
+
+
+@celery_app.task(name=TASK_ENGINE_STATUS, bind=True)
+def report_engines(self) -> int:
+    return engine_status.report_worker_engines(self.request.hostname)
+
+
+@worker_ready.connect
+def _report_on_start(sender=None, **_kw) -> None:
+    """A worker states which managed engines it can run as soon as it starts."""
+    engine_status.report_worker_engines(sender.hostname, _queues(sender))
+
+
+@worker_shutdown.connect
+def _forget_on_stop(sender=None, **_kw) -> None:
+    engine_status.forget_worker(sender.hostname)

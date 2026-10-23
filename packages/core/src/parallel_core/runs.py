@@ -124,12 +124,22 @@ def installation_for(db: Session, organisation_id: str, engine_id: str) -> dict 
 
 
 def check_engine(db: Session, organisation_id: str, engine_id: str, mode: ExecutionMode):
+    """Availability for a run: this host's own check, or, for managed runs this host cannot execute
+    itself, a recent check reported by a worker that serves the engine's queue."""
+    from .engine_status import worker_check
+
     adapter = get_adapter(engine_id)
     inst = installation_for(db, organisation_id, engine_id)
     try:
-        return adapter.check_installation(mode, installation=inst)  # type: ignore[call-arg]
+        local = adapter.check_installation(mode, installation=inst)  # type: ignore[call-arg]
     except TypeError:
-        return adapter.check_installation(mode)
+        local = adapter.check_installation(mode)
+    in_process = get_settings().task_always_eager  # eager execution runs here, so only this host counts
+    if mode == ExecutionMode.managed and local.availability != Availability.ready and not in_process:
+        remote = worker_check(db, engine_id, mode)
+        if remote is not None:
+            return remote
+    return local
 
 
 # ---------------------------------------------------------------- submission

@@ -5,7 +5,7 @@ Queues:
   gpu            - GPU-dependent work (reconstruction training, Isaac Sim)
   reconstruction - capture processing stages
   results        - report generation
-  maintenance    - recovery sweeps (beat schedule)
+  maintenance    - recovery sweeps and engine availability reports (beat schedule)
 The API sends tasks by name, so it never imports worker code.
 """
 
@@ -21,6 +21,7 @@ TASK_REPORT = "parallel.results.generate_report"
 TASK_RECOVERY = "parallel.simulation.recovery_sweep"
 TASK_OPTIMISATION = "parallel.simulation.run_optimisation"
 TASK_IMPORT_RESULT = "parallel.simulation.import_external_result"
+TASK_ENGINE_STATUS = "parallel.simulation.report_engines"
 
 GPU_ENGINES = {"isaacsim"}
 
@@ -39,8 +40,13 @@ def make_celery() -> Celery:
             TASK_RECONSTRUCT: {"queue": "reconstruction"},
             TASK_REPORT: {"queue": "results"},
             TASK_RECOVERY: {"queue": "maintenance"},
+            TASK_ENGINE_STATUS: {"queue": "maintenance"},
         },
-        beat_schedule={"recovery-sweep": {"task": TASK_RECOVERY, "schedule": 60.0}},
+        beat_schedule={
+            "recovery-sweep": {"task": TASK_RECOVERY, "schedule": 60.0},
+            # workers also report when they start; this keeps reports fresh while they run
+            "engine-status": {"task": TASK_ENGINE_STATUS, "schedule": 300.0},
+        },
         broker_connection_retry_on_startup=True,
         result_expires=24 * 3600,
     )

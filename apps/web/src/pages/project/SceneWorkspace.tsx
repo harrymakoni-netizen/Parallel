@@ -66,6 +66,7 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
   const [speed, setSpeed] = useState(4);
   const [notice, setNotice] = useState<string | null>(null);
   const [gridStep, setGridStep] = useState<number | null>(null);
+  const [range, setRange] = useState<[number, number] | null>(null);
   const runA = params.get("run");
   const runB = params.get("compare");
   const playA = useRunData<PlaybackData>(runA ?? undefined, "playback.json", !!runA);
@@ -117,7 +118,8 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
   useEffect(() => {
     viewers.current[0]?.setPlayback(playA.data ?? null);
     if (viewers.current[1]) viewers.current[1].setPlayback(playB.data ?? null);
-    const r = viewers.current[0]?.playbackRange;
+    const r = viewers.current[0]?.playbackRange ?? null;
+    setRange(r); // state, so the time controls enable as soon as the trajectory is ready
     if (r) setT(r[0]);
   }, [playA.data, playB.data, runB]);
   useEffect(() => { viewers.current.forEach((v) => v.setTime(t)); }, [t]);
@@ -184,7 +186,6 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
     qc.invalidateQueries({ queryKey: ["assets", pid] });
   };
   const sel = objects.find((o) => o.id === selected) ?? null;
-  const range = viewers.current[0]?.playbackRange ?? null;
   const runs = useRuns(pid);
   const scen = useScenarios(pid);
   const sname = new Map((scen.data ?? []).map((s) => [s.id, s.name]));

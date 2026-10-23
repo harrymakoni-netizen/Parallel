@@ -1,0 +1,37 @@
+{
+ "recorded_at": "2026-10-23T07:00:15.133Z",
+ "browser": "Chromium 141.0.7390.37",
+ "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+ "viewport": "1440 x 900",
+ "base_url": "http://127.0.0.1:5173",
+ "rows": [
+  {
+   "measure": "Open the scene workspace: prepared mine plan (13 objects), navigation to interactive",
+   "result": "1.27 s median (1.23 to 1.35, n = 3)"
+  },
+  {
+   "measure": "Open a reconstructed scene and load its point cloud (1208 points)",
+   "result": "1.16 s median (1.07 to 1.26, n = 3)"
+  },
+  {
+   "measure": "Orbit the reconstructed scene (frame rate while dragging)",
+   "result": "55.0 frames/s"
+  },
+  {
+   "measure": "Playback SUMO corridor, 1 h of traffic: 1001 frames, 450 agents, 47,519 positions, 1.08 MB playback derivative; load until playable",
+   "result": "1.66 s median (1.61 to 1.70, n = 3)"
+  },
+  {
+   "measure": "Playback SUMO corridor, 1 h of traffic at 16x (frame rate while playing)",
+   "result": "18.2 frames/s"
+  },
+  {
+   "measure": "Playback JuPedSim, 160 people: 113 frames, 160 agents, 9,672 positions, 0.14 MB playback derivative; load until playable",
+   "result": "1.71 s median (1.70 to 2.11, n = 3)"
+  },
+  {
+   "measure": "Playback JuPedSim, 160 people at 4x (frame rate while playing)",
+   "result": "23.0 frames/s"
+  }
+ ]
+}

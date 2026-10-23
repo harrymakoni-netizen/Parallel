@@ -277,6 +277,20 @@ class EngineInstallation(IdMixin, TimestampMixin, Base):
     created_by: Mapped[str | None] = fk("app_user.id", ondelete="SET NULL", nullable=True)
 
 
+class WorkerEngineReport(IdMixin, Base):
+    """A processing worker's own installation check for an engine it can run (managed mode). The API host
+    usually has no engines installed, so availability for managed runs comes from these reports."""
+
+    __tablename__ = "worker_engine_report"
+    __table_args__ = (UniqueConstraint("worker", "engine_id", "execution_mode"),)
+    worker: Mapped[str] = mapped_column(String(200))
+    engine_id: Mapped[str] = mapped_column(String(40), index=True)
+    execution_mode: Mapped[str] = mapped_column(String(20))
+    availability: Mapped[str] = mapped_column(String(40))
+    check: Mapped[dict] = mapped_column(J, default=dict)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 # ============================================================ runs and results
 class SimulationRun(IdMixin, TimestampMixin, Base):
     __tablename__ = "simulation_run"

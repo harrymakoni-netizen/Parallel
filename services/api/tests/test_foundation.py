@@ -327,3 +327,48 @@ def test_admin_command_bootstraps_first_administrator(client, monkeypatch):
 
     with pytest.raises(SystemExit):
         admin.set_password("ops@example.org")
+
+
+def test_managed_availability_comes_from_fresh_worker_reports(client, world, monkeypatch):
+    """The API host has no engines in a distributed deployment: managed runs rely on what workers report,
+    only while the report is recent; other modes never do."""
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    from parallel_contracts.engines import Availability, ExecutionMode
+    from parallel_core import engine_status, runs
+    from parallel_core.db import session_scope, utcnow
+    from parallel_core.models import Organisation, WorkerEngineReport
+
+    monkeypatch.setattr(runs, "get_settings", lambda: SimpleNamespace(task_always_eager=False))
+    with session_scope() as db:
+        org = db.scalars(select(Organisation)).first()
+        assert runs.check_engine(db, org.id, "fds", ExecutionMode.managed).availability != Availability.ready
+
+    # a worker that serves the cpu queue reports what it can run (real checks on this host)
+    assert engine_status.report_worker_engines("sim@test", {"cpu"}) > 0
+    with session_scope() as db:
+        reported = {r.engine_id: r.availability for r in db.scalars(
+            select(WorkerEngineReport).where(WorkerEngineReport.worker == "sim@test"))}
+    assert reported["jupedsim"] == "ready" and "isaacsim" not in reported  # GPU engines belong to gpu workers
+
+    ready = {"engine_id": "fds", "execution_mode": "managed", "availability": "ready", "detected_version": "6.10.1",
+             "checked_at": utcnow().isoformat(), "worker": "fds-worker@test", "details": []}
+    with session_scope() as db:
+        db.add(WorkerEngineReport(worker="fds-worker@test", engine_id="fds", execution_mode="managed",
+                                  availability="ready", check=ready, checked_at=utcnow()))
+    with session_scope() as db:
+        c = runs.check_engine(db, org.id, "fds", ExecutionMode.managed)
+        assert c.availability == Availability.ready and c.worker == "fds-worker@test"
+        # file exchange depends on the organisation, not on workers
+        assert runs.check_engine(db, org.id, "fds", ExecutionMode.file_exchange).worker is None
+        stale = db.scalar(select(WorkerEngineReport).where(WorkerEngineReport.worker == "fds-worker@test"))
+        stale.checked_at = utcnow() - timedelta(hours=1)
+    with session_scope() as db:
+        assert runs.check_engine(db, org.id, "fds", ExecutionMode.managed).availability != Availability.ready
+    engine_status.forget_worker("fds-worker@test")
+    engine_status.forget_worker("sim@test")
+    with session_scope() as db:
+        assert not db.scalars(select(WorkerEngineReport)).all()
