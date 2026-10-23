@@ -36,15 +36,24 @@ export default function SceneWorkspace() {
   }
   if (!rev.data) return <div className="page"><ErrorNote error={rev.error} /></div>;
   return (
-    <Workspace key={rev.data.id} revId={rev.data.id} content={rev.data.content as SceneContent} quality={rev.data.quality_view} status={rev.data.status} number={rev.data.number}
+    <Workspace key={rev.data.id} revId={rev.data.id} content={rev.data.content as SceneContent} quality={rev.data.quality_view}
+      files={rev.data.visual_asset_files ?? {}} status={rev.data.status} number={rev.data.number}
       sceneName={scene?.name ?? "Scene"} sceneId={scene!.id}
       revisions={(revs.data ?? []).map((r) => ({ id: r.id, number: r.number, status: r.status }))}
       onRevision={(id) => setParams((p) => { p.set("rev", id); return p; })} />
   );
 }
 
-function Workspace({ revId, content, quality, status, number, sceneName, sceneId, revisions, onRevision }: {
-  revId: string; content: SceneContent; quality?: QualityView[]; status: string; number: number; sceneName: string; sceneId: string;
+/** What the 3D view can draw: PLY point clouds, and Gaussian splats in the formats Spark reads. */
+function displayable(kind: string, filename: string | undefined): boolean {
+  const ext = (filename ?? "").toLowerCase().split(".").pop() ?? "";
+  if (kind === "point_cloud") return ext === "ply" || !filename;
+  return (kind === "gaussian_splat" || kind === "gaussian_initialisation") && (!filename || ["ply", "splat", "spz", "ksplat"].includes(ext));
+}
+
+function Workspace({ revId, content, quality, files, status, number, sceneName, sceneId, revisions, onRevision }: {
+  revId: string; content: SceneContent; quality?: QualityView[]; files: Record<string, { filename: string }>;
+  status: string; number: number; sceneName: string; sceneId: string;
   revisions: { id: string; number: number; status: string }[]; onRevision: (id: string) => void;
 }) {
   const pid = useProjectId();
@@ -154,7 +163,7 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
       const bytes = await (await fetch(sameOrigin(u.url))).arrayBuffer();
       for (const v of viewers.current) {
         if (va.kind === "point_cloud") await v.addPointCloud(va.id, bytes, transformFor(va.frame));
-        else await v.addSplat(va.id, bytes, transformFor(va.frame));
+        else await v.addSplat(va.id, bytes, transformFor(va.frame), files[va.asset_id]?.filename);
       }
       setVisuals((s) => ({ ...s, [va.id]: "shown" }));
     } catch {
@@ -163,7 +172,8 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
   };
   useEffect(() => {
     if (!gl) return;
-    content.visual_assets.filter((v) => v.kind === "point_cloud").forEach((v) => void loadVisual(v));
+    content.visual_assets.filter((v) => v.kind === "point_cloud" && displayable(v.kind, files[v.asset_id]?.filename))
+      .forEach((v) => void loadVisual(v));
   }, [revId, gl, runB]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveContent = useMutation({
@@ -239,7 +249,10 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
                   setVisuals((s) => ({ ...s, [va.id]: e.target.checked ? "shown" : "hidden" }));
                 }} /> {va.label}</label>
               ) : (
-                <><span>{va.label}</span>{visuals[va.id] === "loading" ? <span className="spinner" aria-label="Loading" /> : <button className="btn btn-small" onClick={() => loadVisual(va)} disabled={!gl}>Load</button>}</>
+                <><span>{va.label}</span>{!displayable(va.kind, files[va.asset_id]?.filename)
+                  ? <span className="muted">stored; not drawn in the 3D view</span>
+                  : visuals[va.id] === "loading" ? <span className="spinner" aria-label="Loading" />
+                  : <button className="btn btn-small" onClick={() => loadVisual(va)} disabled={!gl}>Load</button>}</>
               )}
             </div>
             <div className="muted">{va.kind.replace(/_/g, " ")}{visuals[va.id] === "error" ? " · could not be loaded" : ""}</div>

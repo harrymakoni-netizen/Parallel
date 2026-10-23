@@ -324,6 +324,11 @@ class DeriveIn(BaseModel):
     discipline: Literal["pedestrian"] = "pedestrian"
     name: str
     population_default: int = 20
+    include_hypothetical: bool = Field(
+        default=False,
+        description="Also use objects that belong to a hypothetical scenario (for a layout alternative). "
+        "By default only recorded-scene and prepared-model objects describe the existing situation.",
+    )
 
 
 @router.post("/scene-revisions/{rev_id}/derive-model", status_code=201)
@@ -331,11 +336,14 @@ def derive_model(rev_id: str, body: DeriveIn, user: CurrentUser, db: DB):
     """Prepare a pedestrian domain model from prepared-model objects in a scene revision.
 
     Uses objects of kind walkable_area, obstacle, exit/refuge, start_zone and route_segment. Captured appearance
-    is never treated as walkable geometry automatically: only explicitly prepared objects are used.
+    is never treated as walkable geometry automatically: only explicitly prepared objects are used. Hypothetical
+    objects (proposals) are left out unless requested, so a model of the existing situation never silently
+    contains a proposal; when they are included, the model's provenance names them.
     """
     rev, sc = _rev(db, user, rev_id, Action.edit)
     content = SceneRevisionContent.model_validate(rev.content)
-    objs = content.spatial_objects
+    hypothetical = [o for o in content.spatial_objects if o.belongs_to == "hypothetical_scenario"]
+    objs = [o for o in content.spatial_objects if body.include_hypothetical or o.belongs_to != "hypothetical_scenario"]
 
     def polys(kind: str) -> list:
         return [o for o in objs if o.kind == kind and o.geometry.type == "Polygon"]
@@ -367,9 +375,12 @@ def derive_model(rev_id: str, body: DeriveIn, user: CurrentUser, db: DB):
         route_segments=[RouteSegment(id=o.id, name=o.name, polygon=PolygonGeom.model_validate(o.geometry.model_dump()))
                         for o in polys("route_segment")],
     )
+    used = [o.name for o in hypothetical if body.include_hypothetical]
+    note = "Derived from prepared scene objects" + (
+        f"; includes hypothetical objects: {', '.join(used)}" if used
+        else f"; {len(hypothetical)} hypothetical object(s) left out" if hypothetical else "")
     env = DomainModelEnvelope(discipline="pedestrian", name=body.name, scene_revision_id=rev.id, content=model,
-                              provenance=Provenance(kind=ProvenanceKind.derived, derived_from=[rev.id],
-                                                    note="Derived from prepared scene objects"))
+                              provenance=Provenance(kind=ProvenanceKind.derived, derived_from=[rev.id], note=note))
     from ..services.templates import add_model
 
     project = require_project(db, user, sc.project_id, Action.edit)

@@ -157,6 +157,7 @@ export interface SceneRevision extends Revision {
   parent_revision_id: string | null;
   content: SceneContent & Json;
   quality_view?: QualityView[];
+  visual_asset_files?: Record<string, { id: string; filename: string; kind: string; size_bytes: number; sha256: string }>;
 }
 export interface DomainModel {
   id: string;

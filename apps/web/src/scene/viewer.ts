@@ -403,13 +403,14 @@ export class SceneViewer {
     this.fit();
   }
 
-  async addSplat(id: string, bytes: ArrayBuffer, matrix: number[][] | null): Promise<void> {
+  /** Gaussian splats in any format Spark reads (.ply, .splat, .spz, .ksplat); the file name selects the parser. */
+  async addSplat(id: string, bytes: ArrayBuffer, matrix: number[][] | null, fileName = `${id}.ply`): Promise<void> {
     const { SparkRenderer, SplatMesh } = await import("@sparkjsdev/spark");
     if (!this.spark) {
       this.spark = new SparkRenderer({ renderer: this.renderer }) as unknown as THREE.Object3D;
       this.scene.add(this.spark);
     }
-    const mesh = new SplatMesh({ fileBytes: new Uint8Array(bytes), fileName: `${id}.ply` });
+    const mesh = new SplatMesh({ fileBytes: new Uint8Array(bytes), fileName });
     await mesh.initialized;
     mesh.name = id;
     this.applyMatrix(mesh as unknown as THREE.Object3D, matrix);

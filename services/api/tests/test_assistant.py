@@ -379,3 +379,72 @@ def test_anthropic_request_contract(monkeypatch):
     assert turn.content[0] == {"type": "thinking", "thinking": "", "signature": "sig"}
     assert turn.tool_calls[0]["name"] == "inspect_project" and turn.stop_reason == "tool_use"
     assert os.environ.get("PARALLEL_ASSISTANT_PROVIDER") is None
+
+
+def test_missing_inputs_are_reported_not_invented(client, world, mine, scripted):
+    """Spec 30.4: the assistant asks for what is missing; the tool lists assumed inputs and what is never
+    inferred from imagery, and the instructions forbid inventing values or claiming unexecuted runs."""
+    ed = world["editor"].h
+    dm = client.get(f"/api/v1/projects/{mine}/models", headers=ed).json()[0]["id"]
+    scripted([
+        {"tool_calls": [{"name": "identify_missing_inputs", "input": {"domain_model_id": dm}}]},
+        {"text": "Pre-movement times are assumptions; please supply drill data."},
+    ])
+    sess = client.post(f"/api/v1/projects/{mine}/assistant/sessions", headers=ed).json()
+    items = client.post(f"/api/v1/assistant/sessions/{sess['id']}/messages", headers=ed,
+                        json={"text": "What is this model missing?"}).json()["items"]
+    res = next(i for i in items if i["type"] == "tool_call")["result"]
+    assert res["validation"]["ok"] is True and res["unadopted_ai_values"] == []
+    assert res["assumed_inputs"], "template inputs entered as assumptions are listed for the user to replace"
+    assert "hidden drainage geometry" in res["never_inferred_from_imagery"]
+    system = providers._scripted.requests[-1]["system"]  # type: ignore[union-attr]
+    flat = system if isinstance(system, str) else json.dumps(system)
+    assert "say what is missing instead of inventing a value" in flat
+    assert "Never say that a draft has been adopted or has run unless a tool result shows it" in flat
+
+
+def test_case_records_keep_evidence_observation_and_interpretation_distinct(client, world, scripted):
+    """Spec 30.4: with the organisation's permission, case records reach the assistant as separate
+    observation and interpretation records, the interpretation citing its basis; media never do."""
+    ed, admin = world["editor"].h, world["admin"].h
+    pid = client.post("/api/v1/projects", headers=ed, json={
+        "organisation_id": world["org_id"], "name": "Assistant case", "project_type": "crashlens"}).json()["id"]
+    cid = client.post(f"/api/v1/projects/{pid}/cases", headers=ed,
+                      json={"reference": "TC-AI", "title": "Assistant training case", "training": True}).json()["id"]
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (90, 90, 90)).save(buf, format="PNG")
+    ev = client.post(f"/api/v1/cases/{cid}/evidence", headers=ed, data={"kind": "image", "title": "Photo 1"},
+                     files={"file": ("p1.png", buf.getvalue(), "image/png")}).json()
+    obs = client.post(f"/api/v1/cases/{cid}/observations", headers=ed, json={
+        "statement_type": "observation", "kind": "skid_mark", "text": "A 10 m tyre mark ends at the kerb",
+        "evidence_item_id": ev["id"], "position": [3.0, 1.0]}).json()
+    interp = client.post(f"/api/v1/cases/{cid}/observations", headers=ed, json={
+        "statement_type": "interpretation", "kind": "skid_mark", "text": "Braking began about 10 m before the kerb",
+        "based_on": [obs["id"]]})
+    assert interp.status_code == 201, interp.text
+    org = f"/api/v1/organisations/{world['org_id']}/settings"
+    assert client.patch(org, headers=admin, json={"allow_case_media_to_ai": True}).status_code == 200
+    try:
+        scripted([
+            {"tool_calls": [{"name": "list_case_evidence", "input": {"case_id": cid, "vehicle_record_id": None}}]},
+            {"text": "The tyre mark is an observation; the braking point is an interpretation based on it."},
+        ])
+        sess = client.post(f"/api/v1/projects/{pid}/assistant/sessions", headers=ed).json()
+        items = client.post(f"/api/v1/assistant/sessions/{sess['id']}/messages", headers=ed,
+                            json={"text": "Summarise the evidence"}).json()["items"]
+    finally:
+        client.patch(org, headers=admin, json={"allow_case_media_to_ai": False})
+    res = next(i for i in items if i["type"] == "tool_call")["result"]
+    by_type = {s["statement_type"]: s for s in res["statements"]}
+    assert set(by_type) == {"observation", "interpretation"}
+    assert by_type["interpretation"]["based_on"] == [obs["id"]]
+    assert "Media files are never sent" in res["note"]
+    assert [e["id"] for e in res["evidence_items"]] == [ev["id"]]
+    assert set(res["evidence_items"][0]) == {"id", "kind", "title", "original_sha256"}  # metadata, not media
+    system = providers._scripted.requests[-1]["system"]  # type: ignore[union-attr]
+    flat = system if isinstance(system, str) else json.dumps(system)
+    assert "keep observations, interpretations and hypotheses distinct" in flat

@@ -391,3 +391,51 @@ def test_organisation_quotas_refuse_runs_before_any_work(client, world, project,
     r = client.post(f"/api/v1/projects/{project}/runs", headers=ed, json={"scenario_revision_id": sc["current_revision_id"]})
     assert r.status_code == 429 and "concurrency limit" in r.json()["error"]["message"]
     assert client.get(f"/api/v1/projects/{project}/runs", headers=ed).json()["total"] == done  # nothing created
+
+
+def test_derived_model_reflects_prepared_geometry_and_leaves_out_proposals(client, world, project):
+    """Spec 30.3 (Construction): scenario geometry is reflected in the prepared model; a proposal drawn in
+    the scene is not silently part of the existing-situation model."""
+    ed = world["editor"].h
+    syn = {"kind": "synthetic", "note": "test plan"}
+
+    def obj(oid, kind, x0, y0, x1, y1, belongs="prepared_model", **props):
+        return {"id": oid, "name": oid.replace("_", " "), "kind": kind, "layer": "plan", "belongs_to": belongs,
+                "geometry": {"type": "Polygon", "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]},
+                "provenance": syn,
+                "properties": {k: {"value": v, "unit": "count", "provenance": {"kind": "measured", "source": "site count"}}
+                               for k, v in props.items()}}
+
+    rev = client.post(f"/api/v1/projects/{project}/scenes", headers=ed, json={"name": "Yard plan"}).json()
+    content = client.get(f"/api/v1/scene-revisions/{rev['id']}", headers=ed).json()["content"]
+    content["spatial_objects"] = [
+        obj("yard", "walkable_area", 0, 0, 40, 10),
+        obj("skip", "obstacle", 10, 4, 12, 6),
+        obj("gate", "exit", 38, 0, 40, 10),
+        obj("crew", "start_zone", 1, 1, 5, 9, population=12),
+        obj("helpers", "start_zone", 20, 1, 24, 9),
+        obj("new_path", "walkable_area", 0, 10, 4, 20, belongs="hypothetical_scenario"),
+    ]
+    rev = client.post(f"/api/v1/scenes/{rev['scene_id']}/revisions", headers=ed,
+                      json={"content": content, "message": "plan", "base_revision_id": rev["id"]}).json()
+
+    def derive(**kw):
+        r = client.post(f"/api/v1/scene-revisions/{rev['id']}/derive-model", headers=ed,
+                        json={"name": "Yard evacuation", **kw})
+        assert r.status_code == 201, r.text
+        mr = client.get(f"/api/v1/model-revisions/{r.json()['revision_id']}", headers=ed).json()["content"]
+        return mr
+
+    m = derive()
+    c = m["content"]
+    assert m["scene_revision_id"] == rev["id"] and m["provenance"]["derived_from"] == [rev["id"]]
+    assert c["walkable_area"]["type"] == "Polygon"  # the proposal is not part of the existing situation
+    assert "1 hypothetical object(s) left out" in m["provenance"]["note"]
+    assert [o["id"] for o in c["obstacles"]] == ["skip"] and [e["id"] for e in c["exits"]] == ["gate"]
+    groups = {g["id"]: g for g in c["start_groups"]}
+    assert groups["crew"]["count"] == 12 and groups["crew"]["provenance"]["kind"] == "measured"
+    assert groups["helpers"]["count"] == 20 and groups["helpers"]["provenance"]["kind"] == "assumption"
+
+    alt = derive(include_hypothetical=True)
+    assert alt["content"]["walkable_area"]["type"] == "MultiPolygon"
+    assert "includes hypothetical objects: new path" in alt["provenance"]["note"]
