@@ -114,6 +114,7 @@ verified, how, and on which platform is in [docs/validation.md](docs/validation.
 | [Validation](docs/validation.md) | Test strategy, engine verification, access control, backups, end-to-end and container checks |
 | [Benchmarks](docs/benchmarks.md) | Measured workloads with the host recorded |
 | [Deployment](docs/deployment.md) | Local, single-host, hosted, GPU and licensed-engine deployment; operations |
+| [Windows setup guide](docs/setup-windows.md) | From a clean Windows computer to a working installation, with sharing, updates and troubleshooting |
 | [Implementation status](docs/implementation-status.md) | Status of every specification area, and known limitations |
 | [Specification](docs/PARALLEL_DEVELOPMENT_SPEC.md) | The development specification this implementation follows |
 
