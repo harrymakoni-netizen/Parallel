@@ -168,7 +168,9 @@ def verify_blob(secret: str, key: str, exp: int, sig: str) -> bool:
     return hmac.compare_digest(sign_blob(secret, key, exp), sig)
 
 
-class S3Storage(Storage):  # pragma: no cover - exercised against MinIO in deployment checks
+class S3Storage(Storage):
+    """Any S3-compatible object store. Tested against an S3 API emulator (moto); see test_storage_s3.py."""
+
     def __init__(self, settings: Settings):
         import boto3
 
@@ -214,11 +216,15 @@ class S3Storage(Storage):  # pragma: no cover - exercised against MinIO in deplo
         return self.client.get_object(Bucket=self.bucket, Key=_check_key(key))["Body"].read()
 
     def exists(self, key):
+        from botocore.exceptions import ClientError
+
         try:
             self.client.head_object(Bucket=self.bucket, Key=_check_key(key))
             return True
-        except Exception:
-            return False
+        except ClientError as e:  # only "not found" means absent; credentials or network errors propagate
+            if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+                return False
+            raise
 
     def delete(self, key):
         self.client.delete_object(Bucket=self.bucket, Key=_check_key(key))
@@ -240,7 +246,8 @@ class S3Storage(Storage):  # pragma: no cover - exercised against MinIO in deplo
     def signed_url(self, key, filename=None, seconds=None):
         params = {"Bucket": self.bucket, "Key": _check_key(key)}
         if filename:
-            params["ResponseContentDisposition"] = f'attachment; filename="{filename}"'
+            safe = "".join(c for c in filename if c.isprintable() and c not in '"\\;') or "download"
+            params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'
         return self.client.generate_presigned_url(
             "get_object", Params=params, ExpiresIn=seconds or self.settings.signed_url_seconds
         )
