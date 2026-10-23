@@ -65,6 +65,10 @@ class Storage(abc.ABC):
     @abc.abstractmethod
     def size(self, key: str) -> int: ...
 
+    @abc.abstractmethod
+    def iter_keys(self, prefix: str = "") -> Iterator[str]:
+        """Every stored object key under ``prefix``, in sorted order (used by backups)."""
+
 
 class LocalStorage(Storage):
     def __init__(self, root: Path, settings: Settings):
@@ -144,6 +148,14 @@ class LocalStorage(Storage):
 
     def size(self, key: str) -> int:
         return self.path(key).stat().st_size
+
+    def iter_keys(self, prefix: str = "") -> Iterator[str]:
+        root = self.root.resolve()
+        for p in sorted(root.rglob("*")):
+            if p.is_file() and not p.name.endswith(".part"):  # skip unpublished partial writes
+                key = p.relative_to(root).as_posix()
+                if key.startswith(prefix):
+                    yield key
 
     def signed_url(self, key: str, filename: str | None = None, seconds: int | None = None) -> str:
         exp = int(time.time()) + (seconds or self.settings.signed_url_seconds)
@@ -242,6 +254,10 @@ class S3Storage(Storage):
 
     def size(self, key):
         return int(self.client.head_object(Bucket=self.bucket, Key=_check_key(key))["ContentLength"])
+
+    def iter_keys(self, prefix=""):
+        for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix):
+            yield from (o["Key"] for o in page.get("Contents", []))  # S3 lists keys in sorted order
 
     def signed_url(self, key, filename=None, seconds=None):
         params = {"Bucket": self.bucket, "Key": _check_key(key)}

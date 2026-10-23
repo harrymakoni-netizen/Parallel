@@ -82,6 +82,7 @@ def test_delete_prefix_only_removes_that_prefix(store):
         store.put_bytes(k, b"1")
     with pytest.raises(StorageError):
         store.delete_prefix("demo/a")  # a prefix must end with '/'
+    assert list(store.iter_keys("demo/")) == ["demo/a/1", "demo/a/2", "demo/b/1"]
     assert store.delete_prefix("demo/a/") == 2
     assert not store.exists("demo/a/1") and store.exists("demo/b/1")
 

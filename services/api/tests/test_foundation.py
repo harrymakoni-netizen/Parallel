@@ -308,3 +308,22 @@ def test_audit_events_recorded(client, world, project):
 def test_openapi_document(client):
     doc = client.get("/api/v1/openapi.json").json()
     assert doc["info"]["title"] == "Parallel API" and "/api/v1/projects/{project_id}/runs" in doc["paths"]
+
+
+def test_admin_command_bootstraps_first_administrator(client, monkeypatch):
+    from parallel_api import admin
+
+    monkeypatch.setenv("PARALLEL_BOOTSTRAP_PASSWORD", "bootstrap-pass-0123")
+    out = admin.create_admin("Ops@Example.org", "Operations", "Example Engineering", None)
+    assert out["user_created"] and out["organisation_created"] and out["slug"] == "example-engineering"
+    again = admin.create_admin("ops@example.org", "Operations", "Example Engineering", None)
+    assert not again["user_created"] and not again["organisation_created"]  # idempotent
+    tok = client.post("/api/v1/auth/login", json={"email": "ops@example.org", "password": "bootstrap-pass-0123"})
+    assert tok.status_code == 200
+    me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {tok.json()['access_token']}"}).json()
+    assert any(m["role"] == "admin" for m in me["organisations"])
+    monkeypatch.setenv("PARALLEL_BOOTSTRAP_PASSWORD", "short")
+    import pytest
+
+    with pytest.raises(SystemExit):
+        admin.set_password("ops@example.org")
