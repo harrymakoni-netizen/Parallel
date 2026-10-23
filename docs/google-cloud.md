@@ -79,8 +79,8 @@ alias dc='docker compose -f compose.yaml -f compose.https.yaml'
 dc run --rm api python -m parallel_api.admin create-admin --email you@example.org --organisation "Your organisation"
 ```
 
-Run it again with your partner's email and the same organisation name, or invite them from the
-application's members page. Optional demonstration projects (run the real engines once):
+Run it again with your partner's email and the same organisation name, or add them from the
+organisation settings page. Optional demonstration projects (run the real engines once):
 
 ```bash
 dc run --rm -e PARALLEL_DEMO_PASSWORD=<choose one> sim python -m parallel_api.demo seed
@@ -88,11 +88,11 @@ dc run --rm -e PARALLEL_DEMO_PASSWORD=<choose one> sim python -m parallel_api.de
 
 ## 9. Check
 
-Open `https://yourname.duckdns.org` and sign in. Settings → Engines shows each engine's real state.
+Open `https://yourname.duckdns.org` and sign in. The Engines page shows each engine's real state.
 
 ## Operations
 
-- Back up: `dc run --rm api python -m parallel_core.backup create` (see deployment.md → Backups) and
+- Back up: follow deployment.md → Backups (use `-f compose.yaml -f compose.https.yaml` if you wish), and
   copy the result off the machine, or take Compute Engine disk snapshots on a schedule.
 - Update: `git pull`, then step 7 again; migrations run as part of the stack.
 - Logs: `dc logs -f api` (or `sim`, `recon`, `results`, `caddy`).
