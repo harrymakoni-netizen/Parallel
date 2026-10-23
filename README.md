@@ -91,7 +91,7 @@ S3 storage, single sign-on, backups and upgrades.
 ## Tests
 
 ```bash
-uv run pytest                              # 157 tests: real PostgreSQL, real engines, real reconstruction
+uv run pytest                              # 158 tests: real PostgreSQL, real engines, real reconstruction
 uv run ruff check .
 (cd apps/web && npm run typecheck && E2E_PASSWORD=... npm run e2e)   # 17 browser tests
 ```

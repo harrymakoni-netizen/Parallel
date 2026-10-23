@@ -57,7 +57,7 @@ Updated 2026-10-23 on branch `claude/gracious-allen-6xoln9`.
 | 28.3 | Deployment | Implemented and verified (single host); GPU and hosted awaiting environment | Container images and compose verified end to end; S3 storage tested against an emulator only |
 | 28.4 | Observability | In progress | Done: job and queue times, failures, engine versions, reconstruction stage timings, output sizes, AI usage. Missing: worker resource use (CPU and memory per run) |
 | 28.5 | Cost controls | In progress | Done: per-run estimates, job size and upload limits, organisation concurrency limits and monthly quotas, optimisation budgets. Missing: GPU time tracking and storage use per organisation |
-| 30 | Testing and acceptance | Implemented and verified | 157 automated tests, 17 browser tests, engine verification record, benchmarks |
+| 30 | Testing and acceptance | Implemented and verified | 158 automated tests, 17 browser tests, engine verification record, benchmarks |
 | 31 | Demonstration package | Implemented and verified | Five projects from real recorded runs, labelled saved results, presenter notes, safe reset |
 | — | Sign-in with an organisation's identity provider (OIDC) | In progress | The API verifies OIDC tokens against the provider's keys; there is no browser sign-in flow, no account linking and no test |
 
@@ -113,7 +113,7 @@ records are in the [engine verification record](engine-verification.md).
 | 9 | Reconstruction setup and example | [reconstruction.md](reconstruction.md) |
 | 10 | Model and scenario schemas | `packages/contracts`, `/api/v1/models/schemas`, [data contracts](data-contracts.md) |
 | 11 | Result normalisation documentation | [data contracts](data-contracts.md#normalisation), [metric catalogue](metrics.md) |
-| 12 | Automated tests | 157 Python tests, 17 browser tests ([validation](validation.md)) |
+| 12 | Automated tests | 158 Python tests, 17 browser tests ([validation](validation.md)) |
 | 13 | Benchmark results | [benchmarks.md](benchmarks.md) |
 | 14 | Deployment instructions | [deployment.md](deployment.md), `compose.yaml`, `infra/docker` |
 | 15 | Report templates | `workers/results` ([data contracts](data-contracts.md#reports)) |

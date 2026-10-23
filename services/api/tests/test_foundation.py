@@ -439,3 +439,13 @@ def test_derived_model_reflects_prepared_geometry_and_leaves_out_proposals(clien
     alt = derive(include_hypothetical=True)
     assert alt["content"]["walkable_area"]["type"] == "MultiPolygon"
     assert "includes hypothetical objects: new path" in alt["provenance"]["note"]
+
+
+def test_transactions_commit_before_the_response_is_sent():
+    """A client that gets 201 must be able to read its write at once (found by the browser tests:
+    a member created and signed in immediately was refused while the commit was still pending)."""
+    from typing import get_args
+
+    from parallel_api.deps import DB
+
+    assert get_args(DB)[1].scope == "function"

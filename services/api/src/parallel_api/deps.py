@@ -29,7 +29,10 @@ def get_db() -> Iterator[Session]:
         db.close()
 
 
-DB = Annotated[Session, Depends(get_db)]
+# Function scope: the transaction commits (or fails) before the response is sent. With the default request
+# scope the commit ran after the client already had its 201, so a fast follow-up request could miss the
+# write, and a failing commit would follow a success response. Event streams open their own sessions.
+DB = Annotated[Session, Depends(get_db, scope="function")]
 
 
 def current_user(db: DB, authorization: Annotated[str | None, Header()] = None) -> User:
