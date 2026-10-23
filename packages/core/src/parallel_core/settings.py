@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://parallel:parallel@localhost:5432/parallel"
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = Field(
-        default="dev-insecure-change-me", description="Signs session tokens and asset URLs"
+        default="dev-insecure-change-me-not-for-production",
+        description="Signs session tokens and asset URLs; at least 32 characters",
     )
     public_base_url: str = "http://localhost:8000"
     web_origin: str = "http://localhost:5173"
@@ -60,6 +61,15 @@ class Settings(BaseSettings):
     assistant_model: str = "claude-opus-5-5"
     assistant_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     assistant_max_tool_rounds: int = 8
+
+
+    @model_validator(mode="after")
+    def _production_secrets(self) -> Settings:
+        if self.environment == "production" and (
+            self.secret_key.startswith("dev-insecure") or len(self.secret_key) < 32
+        ):
+            raise ValueError("PARALLEL_SECRET_KEY must be a random value of at least 32 characters in production")
+        return self
 
 
 @lru_cache

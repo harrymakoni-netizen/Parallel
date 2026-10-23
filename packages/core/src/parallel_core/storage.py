@@ -59,6 +59,10 @@ class Storage(abc.ABC):
     def signed_url(self, key: str, filename: str | None = None, seconds: int | None = None) -> str: ...
 
     @abc.abstractmethod
+    def delete_prefix(self, prefix: str) -> int:
+        """Delete every object under ``prefix`` (which must end with '/'); returns the count."""
+
+    @abc.abstractmethod
     def size(self, key: str) -> int: ...
 
 
@@ -127,6 +131,16 @@ class LocalStorage(Storage):
 
     def delete(self, key: str) -> None:
         self.path(key).unlink(missing_ok=True)
+
+    def delete_prefix(self, prefix: str) -> int:
+        if not prefix.endswith("/"):
+            raise StorageError("prefix must end with '/'")
+        base = self.path(prefix.rstrip("/"))
+        if not base.exists():
+            return 0
+        n = sum(1 for p in base.rglob("*") if p.is_file())
+        shutil.rmtree(base)
+        return n
 
     def size(self, key: str) -> int:
         return self.path(key).stat().st_size
@@ -208,6 +222,17 @@ class S3Storage(Storage):  # pragma: no cover - exercised against MinIO in deplo
 
     def delete(self, key):
         self.client.delete_object(Bucket=self.bucket, Key=_check_key(key))
+
+    def delete_prefix(self, prefix):
+        if not prefix.endswith("/"):
+            raise StorageError("prefix must end with '/'")
+        n = 0
+        for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=_check_key(prefix)):
+            keys = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+            if keys:
+                self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys})
+                n += len(keys)
+        return n
 
     def size(self, key):
         return int(self.client.head_object(Bucket=self.bucket, Key=_check_key(key))["ContentLength"])
