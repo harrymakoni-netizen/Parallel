@@ -133,12 +133,7 @@ def restore(src: Path) -> dict[str, Any]:
     args, env = _pg(s.database_url)
     # extensions belong to the target server (installed by its administrator), so their entries are skipped
     toc = subprocess.run(["pg_restore", "-l", str(src / "db.dump")], check=True, env=env, capture_output=True, text=True)
-    owned = _extension_tables(s.database_url)
-    keep = [
-        ln for ln in toc.stdout.splitlines()
-        if not re.search(r"\b(EXTENSION|COMMENT - EXTENSION)\b", ln)
-        and not any(f"TABLE DATA {schema} {table} " in ln for schema, table in owned)
-    ]
+    keep = restore_list(toc.stdout, *_target_provided(s.database_url))
     with tempfile.NamedTemporaryFile("w", suffix=".list") as listing:
         listing.write("\n".join(keep) + "\n")
         listing.flush()
@@ -157,16 +152,34 @@ def restore(src: Path) -> dict[str, Any]:
     return verify(src)
 
 
-def _extension_tables(url: str) -> set[tuple[str, str]]:
-    """Tables that belong to an installed extension (such as PostGIS's spatial_ref_sys): the target's
-    extension provides their contents."""
+def restore_list(toc: str, schemas: set[str], extension_tables: set[tuple[str, str]]) -> list[str]:
+    """The entries of a dump's table of contents to restore. Extensions, the schemas the target already
+    has (an extension's, such as PostGIS's ``tiger`` and ``topology``) and the contents of extension-owned
+    tables (such as ``spatial_ref_sys``) are provided by the target server, so their entries are skipped."""
+    keep = []
+    for ln in toc.splitlines():
+        if re.search(r"\b(EXTENSION|COMMENT - EXTENSION)\b", ln):
+            continue
+        m = re.search(r"\b(?:SCHEMA -|COMMENT - SCHEMA) (\S+)", ln)
+        if m and m.group(1) in schemas:
+            continue
+        if any(f"TABLE DATA {schema} {table} " in ln for schema, table in extension_tables):
+            continue
+        keep.append(ln)
+    return keep
+
+
+def _target_provided(url: str) -> tuple[set[str], set[tuple[str, str]]]:
+    """The target's existing schemas and its extension-owned tables."""
     eng = create_engine(url)
     try:
         with eng.connect() as c:
-            return {tuple(r) for r in c.execute(text(
+            schemas = set(c.execute(text("SELECT nspname FROM pg_namespace")).scalars())
+            tables = {tuple(r) for r in c.execute(text(
                 "SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                 "JOIN pg_depend d ON d.objid = c.oid AND d.deptype = 'e' WHERE c.relkind = 'r'"
             ))}
+            return schemas, tables
     finally:
         eng.dispose()
 

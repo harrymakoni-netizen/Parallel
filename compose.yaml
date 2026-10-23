@@ -1,0 +1,143 @@
+# Parallel: a complete single-host deployment.
+#
+#   cp .env.example .env        # then set PARALLEL_SECRET_KEY and POSTGRES_PASSWORD
+#   docker compose up -d --build
+#   docker compose run --rm api python -m parallel_api.admin create-admin \
+#       --email you@example.org --organisation "Your organisation"
+#   open http://localhost:8080
+#
+# Optional demonstration data (runs the real engines once, in the worker image):
+#   docker compose run --rm sim python -m parallel_api.demo seed
+#
+# Base images can be pointed at a mirror with the *_IMAGE build arguments; see docs/deployment.md.
+name: parallel
+
+x-env: &env
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    PARALLEL_ENVIRONMENT: ${PARALLEL_ENVIRONMENT:-production}
+    PARALLEL_SECRET_KEY: ${PARALLEL_SECRET_KEY:?set PARALLEL_SECRET_KEY in .env}
+    PARALLEL_DATABASE_URL: postgresql+psycopg://parallel:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/parallel
+    PARALLEL_REDIS_URL: redis://redis:6379/0
+    PARALLEL_STORAGE_ROOT: /data/storage
+    PARALLEL_WORKSPACE_ROOT: /data/workspaces
+    PARALLEL_PUBLIC_BASE_URL: ${PARALLEL_PUBLIC_BASE_URL:-http://localhost:8080}
+    PARALLEL_WEB_ORIGIN: ${PARALLEL_WEB_ORIGIN:-http://localhost:8080}
+
+x-app: &app
+  <<: *env
+  image: ${PARALLEL_APP_IMAGE:-parallel-app:latest}
+  build:
+    context: .
+    dockerfile: infra/docker/app.Dockerfile
+  volumes:
+    - storage:/data/storage
+  restart: unless-stopped
+
+x-worker: &worker
+  <<: *env
+  image: ${PARALLEL_WORKER_IMAGE:-parallel-worker:latest}
+  build:
+    context: .
+    dockerfile: infra/docker/worker.Dockerfile
+  volumes:
+    - storage:/data/storage
+    - workspaces:/data/workspaces
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_USER: parallel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: parallel
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parallel -d parallel"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  results:
+    <<: *app
+    command: ["celery", "-A", "parallel_results.worker", "worker", "-Q", "results", "-c", "2", "-n", "results@%h", "--loglevel=INFO"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    # periodic recovery sweep for runs whose worker stopped heartbeating
+    <<: *app
+    command: ["celery", "-A", "parallel_simulation.worker", "beat", "--loglevel=INFO", "--schedule", "/tmp/celerybeat-schedule"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  sim:
+    <<: *worker
+    command: ["celery", "-A", "parallel_simulation.worker", "worker", "-Q", "cpu,maintenance", "-c", "${PARALLEL_SIM_CONCURRENCY:-2}", "-n", "sim@%h", "--loglevel=INFO"]
+
+  recon:
+    <<: *worker
+    command: ["celery", "-A", "parallel_reconstruction.worker", "worker", "-Q", "reconstruction", "-c", "1", "-n", "recon@%h", "--loglevel=INFO"]
+
+  web:
+    image: ${PARALLEL_WEB_IMAGE:-parallel-web:latest}
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    ports:
+      - "${PARALLEL_HTTP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db:
+  storage:
+  workspaces:

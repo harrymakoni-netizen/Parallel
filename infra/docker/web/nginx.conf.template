@@ -1,0 +1,37 @@
+# Rendered by the nginx image's envsubst step (PARALLEL_API_UPSTREAM).
+# Security headers are included per location: nginx drops server-level add_header directives in any
+# location that sets its own headers.
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    # uploads are size-checked by the API; this only has to allow them through
+    client_max_body_size 8g;
+
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://${PARALLEL_API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # server-sent run and reconstruction events
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+        proxy_request_buffering off;
+    }
+
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

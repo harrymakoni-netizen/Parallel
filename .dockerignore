@@ -1,0 +1,15 @@
+# Keep build contexts small and free of local state and secrets
+.git
+.venv
+.runtimes
+.dev
+var
+.env
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+apps/web/node_modules
+apps/web/dist
+apps/web/test-results
+apps/web/playwright-report
