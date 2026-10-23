@@ -117,6 +117,8 @@ function ComparisonView({ c }: { c: Comparison }) {
         </details>
       </Card>
       <Card title="Differences" intro="Absolute and percentage differences against the baseline. Percentages are omitted where they are not meaningful (zero baseline, unavailable values).">
+        {Array.from(new Set(c.table.flatMap((row) => Object.values(row.candidates).map((x) => x.diff_note))
+          .filter((n): n is string => !!n && n.startsWith("Lower mean travel time")))).map((n) => <div key={n} className="note warn" style={{ marginBottom: 10 }}>{n}</div>)}
         <div className="table-wrap">
           <table className="data">
             <thead>
@@ -138,7 +140,7 @@ function ComparisonView({ c }: { c: Comparison }) {
                       <td key={`${n}d`} className="num small">
                         {x.abs_diff != null ? `${x.abs_diff > 0 ? "+" : ""}${fmtNum(x.abs_diff)}` : "—"}
                         {x.pct_diff != null && <div className="muted">{x.pct_diff > 0 ? "+" : ""}{x.pct_diff.toFixed(1)}%</div>}
-                        {x.diff_note && <div className="muted" title={x.diff_note}>note</div>}
+                        {x.diff_note && <DiffNote note={x.diff_note} />}
                       </td>,
                     ];
                   })}
@@ -151,4 +153,11 @@ function ComparisonView({ c }: { c: Comparison }) {
       {ordered.length > 1 && <Card title="Charts"><RunCharts runs={ordered.slice(0, 4)} names={labels.slice(0, 4)} /></Card>}
     </div>
   );
+}
+
+/** Short in-cell form of a comparison note; the full text is the tooltip and, for warnings, listed above the table. */
+function DiffNote({ note }: { note: string }) {
+  if (note.startsWith("Lower mean travel time")) return <div title={note}><StatusBadge status="warning" label="Not an improvement" /></div>;
+  if (note.startsWith("Percentage")) return <div className="muted" title={note}>% not shown</div>;
+  return <div className="muted" title={note}>{note.split(":")[0]}</div>;
 }

@@ -6,6 +6,13 @@ import type { Case, Evidence, Observation } from "../../api/types";
 import { Card, Dialog, ErrorNote, Field, PageHead, StatusBadge, fmtDate, fmtNum, humanise } from "../../components/ui";
 import { CaseBar, NoCase, useSelectedCase } from "./CaseSelect";
 
+/** Shorten at a word boundary with an ellipsis, never mid-word. */
+function clip(text: string, n: number): string {
+  if (text.length <= n) return text;
+  const cut = text.slice(0, n);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), n * 0.6)).trimEnd()}…`;
+}
+
 export function EvidencePage() {
   const { current } = useSelectedCase();
   return (
@@ -62,7 +69,7 @@ function EvidenceRow({ e, canEdit }: { e: Evidence; canEdit: boolean }) {
         <button className="btn btn-small btn-ghost" onClick={() => setLog(true)}>Handling log</button>
         {canEdit && e.source_asset_id && <button className="btn btn-small btn-ghost" onClick={() => setDeriv(true)}>Derivatives</button>}
       </div>
-      <div className="small muted">Captured by {e.captured_by ?? "unknown"} · claimed capture {fmtDate(e.claimed_captured_at)} · received {fmtDate(e.created_at)}</div>
+      <div className="small muted">Captured by {e.captured_by ?? "not stated"} · {e.claimed_captured_at ? `capture time stated as ${fmtDate(e.claimed_captured_at)} (not verified)` : "capture time not stated"} · received {fmtDate(e.created_at)}</div>
       {e.original_sha256 && <div className="mono small" style={{ marginTop: 4 }}>SHA-256 {e.original_sha256}</div>}
       {verify.data && (
         <div className={`note ${verify.data.matches ? "" : "error"}`} style={{ marginTop: 6 }}>
@@ -164,7 +171,7 @@ function ObservationList({ items, evidence, all }: { items: Observation[]; evide
               {u?.kind === "range" && <>Range {fmtNum(u.lower)}–{fmtNum(u.upper)} {u.unit} · </>}
               {o.evidence_item_id && <>From “{ev.get(o.evidence_item_id)}” · </>}
               {o.position && <>At ({o.position.map((x) => fmtNum(x, 3)).join(", ")}) m · </>}
-              {o.based_on.length > 0 && <>Based on: {o.based_on.map((b) => `“${(text.get(b) ?? b).slice(0, 40)}”`).join(", ")}</>}
+              {o.based_on.length > 0 && <>Based on: {o.based_on.map((b) => `“${clip(text.get(b) ?? b, 60)}”`).join(", ")}</>}
             </div>
             {o.limitation && <div className="small"><strong>Limitation:</strong> {o.limitation}</div>}
           </li>
@@ -213,7 +220,7 @@ function AddObservation({ c, type, evidence, observations }: { c: Case; type: "o
         ) : (
           <fieldset style={{ border: 0, padding: 0 }}><legend><strong>Based on observations</strong></legend>
             {observations.filter((o) => o.statement_type === "observation").map((o) => (
-              <label key={o.id} className="row small"><input type="checkbox" checked={basis.includes(o.id)} onChange={(e) => setBasis(e.target.checked ? [...basis, o.id] : basis.filter((x) => x !== o.id))} />{o.text.slice(0, 80)}</label>
+              <label key={o.id} className="row small"><input type="checkbox" checked={basis.includes(o.id)} onChange={(e) => setBasis(e.target.checked ? [...basis, o.id] : basis.filter((x) => x !== o.id))} />{clip(o.text, 80)}</label>
             ))}
           </fieldset>
         )}
@@ -239,7 +246,7 @@ function SkidSpeed({ c, observations }: { c: Case; observations: Observation[] }
       <Dialog open={open} onClose={() => setOpen(false)} title="Skid-to-stop speed (v = √(2 μ g d))"
         footer={<><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => calc.mutate()}>Calculate</button></>}>
         <p className="muted small">Valid only for a full skid to rest on a level surface without impact during the skid. The result is recorded as an interpretation, with its limits. It is not a determination of fault.</p>
-        <Field label="Skid-mark observation" htmlFor="sk-obs"><select id="sk-obs" value={f.observation_id} onChange={(e) => setF({ ...f, observation_id: e.target.value })}><option value="">Select…</option>{skids.map((o) => <option key={o.id} value={o.id}>{o.text.slice(0, 60)} ({o.measurement_value} m)</option>)}</select></Field>
+        <Field label="Skid-mark observation" htmlFor="sk-obs"><select id="sk-obs" value={f.observation_id} onChange={(e) => setF({ ...f, observation_id: e.target.value })}><option value="">Select…</option>{skids.map((o) => <option key={o.id} value={o.id}>{clip(o.text, 60)} ({o.measurement_value} m)</option>)}</select></Field>
         <div className="grid grid-2">
           <Field label="Friction low" htmlFor="sk-lo"><input id="sk-lo" inputMode="decimal" value={f.friction_low} onChange={(e) => setF({ ...f, friction_low: e.target.value })} /></Field>
           <Field label="Friction high" htmlFor="sk-hi"><input id="sk-hi" inputMode="decimal" value={f.friction_high} onChange={(e) => setF({ ...f, friction_high: e.target.value })} /></Field>

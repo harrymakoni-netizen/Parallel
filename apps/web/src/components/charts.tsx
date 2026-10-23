@@ -145,7 +145,7 @@ export function LineChart({ series, xLabel, yLabel, height = 260, title, xUnit =
             {xt.map((v) => (
               <text key={v} x={sx(v)} y={bottom + 16} fontSize={11} textAnchor="middle" fill="var(--chart-muted)">{compact(v)}</text>
             ))}
-            <text x={(left + right) / 2} y={bottom + 31} fontSize={12} textAnchor="middle" fill="var(--text-2)">{xLabel}</text>
+            <text x={(left + right) / 2} y={bottom + 31} fontSize={12} textAnchor="middle" fill="var(--text-2)">{xLabel}{xUnit ? ` (${xUnit})` : ""}</text>
             {shown.map((s, i) => {
               const d = s.points.map((p, k) => `${k ? "L" : "M"}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join("");
               const last = s.points[s.points.length - 1];

@@ -141,6 +141,9 @@ export class SceneViewer {
   private play: PlaybackData | null = null;
   private raf = 0;
   private ro: ResizeObserver;
+  private themeWatch: MutationObserver;
+  private schemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  private onScheme = () => this.applyTheme();
   private pickables: THREE.Object3D[] = [];
   private down: { x: number; y: number } | null = null;
   private spark: THREE.Object3D | null = null;
@@ -149,11 +152,11 @@ export class SceneViewer {
   onPick?: (id: string | null) => void;
   onMeasure?: (a: THREE.Vector3, b: THREE.Vector3) => void;
   onCameraChange?: () => void;
+  onGrid?: (spacing: number) => void;
 
   constructor(private el: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(cssColor("--surface-sunken", "#08162d"));
     el.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.display = "block";
     this.labels = new CSS2DRenderer();
@@ -175,6 +178,11 @@ export class SceneViewer {
     const c = this.renderer.domElement;
     c.addEventListener("pointerdown", (e) => (this.down = { x: e.clientX, y: e.clientY }));
     c.addEventListener("pointerup", (e) => this.onClick(e));
+    // follow the theme: the OS preference and the explicit theme toggle both change the tokens
+    this.themeWatch = new MutationObserver(() => this.applyTheme());
+    this.themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    this.schemeQuery.addEventListener("change", this.onScheme);
+    this.applyTheme();
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(el);
     this.resize();
@@ -191,9 +199,31 @@ export class SceneViewer {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     this.ro.disconnect();
+    this.themeWatch.disconnect();
+    this.schemeQuery.removeEventListener("change", this.onScheme);
     this.controls.dispose();
     this.renderer.dispose();
     this.el.innerHTML = "";
+  }
+
+  private applyTheme(): void {
+    this.renderer.setClearColor(cssColor("--surface-sunken", "#08162d"));
+    if (this.grid) this.setGridColors(this.grid);
+  }
+
+  private setGridColors(grid: THREE.GridHelper): void {
+    const major = cssColor("--scene-grid-major", "#2b4467");
+    const minor = cssColor("--scene-grid-minor", "#1a2c48");
+    // GridHelper bakes colours per vertex: the two centre lines use the first colour, the rest the second
+    const col = grid.geometry.getAttribute("color") as THREE.BufferAttribute;
+    const centre = new THREE.Color(major);
+    for (let i = 0; i < col.count; i++) {
+      const p = grid.geometry.getAttribute("position");
+      const onAxis = Math.abs(p.getX(i)) < 1e-6 || Math.abs(p.getZ(i)) < 1e-6;
+      const c = onAxis ? centre : minor;
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    col.needsUpdate = true;
   }
 
   private resize(): void {
@@ -274,6 +304,7 @@ export class SceneViewer {
     div.textContent = text; // labels are data: never inserted as HTML
     const o = new CSS2DObject(div);
     o.position.copy(at);
+    o.center.set(0.5, 1); // the label sits above its anchor rather than covering it
     this.labelsDirty = true;
     return o;
   }
@@ -285,7 +316,7 @@ export class SceneViewer {
     this.prepared.visible = opts.mode !== "captured";
     this.visual.visible = opts.mode !== "model";
     const extent = objectsExtent(objects);
-    this.symbol = { tube: THREE.MathUtils.clamp(extent / 450, 0.25, 3), point: THREE.MathUtils.clamp(extent / 120, 0.6, 6) };
+    this.symbol = { tube: THREE.MathUtils.clamp(extent / 450, 0.25, 3), point: THREE.MathUtils.clamp(extent / 70, 0.6, 8) };
     objects.forEach((o, idx) => {
       if (opts.hiddenLayers.has(o.layer)) return;
       const hyp = o.belongs_to === "hypothetical_scenario";
@@ -485,8 +516,13 @@ export class SceneViewer {
     const c = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const d = Math.max(size.x, size.y, 4);
+    // frame the bounding sphere in both the vertical and the horizontal field of view
+    const radius = Math.max(size.length() / 2, 2);
+    const vfov = THREE.MathUtils.degToRad(this.camera.fov) / 2;
+    const hfov = Math.atan(Math.tan(vfov) * this.camera.aspect);
+    const dist = (radius / Math.sin(Math.min(vfov, hfov))) * 1.05;
     this.controls.target.copy(c);
-    this.camera.position.set(c.x + d * 0.35, c.y - d * 0.75, c.z + d * 0.6);
+    this.camera.position.copy(c).addScaledVector(new THREE.Vector3(0.35, -0.75, 0.6).normalize(), dist);
     this.camera.near = d / 2000;
     this.camera.far = d * 50;
     this.camera.updateProjectionMatrix();
@@ -497,13 +533,14 @@ export class SceneViewer {
     }
     const step = niceStep(d);
     const n = Math.ceil((d * 1.6) / step) * step;
-    this.grid = new THREE.GridHelper(n, Math.round(n / step), 0x2b4467, 0x1a2c48);
+    this.grid = new THREE.GridHelper(n, Math.round(n / step));
+    this.setGridColors(this.grid);
     this.grid.rotation.x = Math.PI / 2;
     this.grid.position.set(Math.round(c.x / step) * step, Math.round(c.y / step) * step, Math.min(0, box.min.z) - 0.01);
     this.scene.add(this.grid);
     this.gridSpacing = step;
     this.labelsDirty = true;
-    this.onCameraChange?.();
+    this.onGrid?.(step);
   }
 
   topDown(): void {

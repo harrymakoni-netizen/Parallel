@@ -15,12 +15,21 @@ from parallel_contracts.domain.common import NamedPolygon
 from parallel_contracts.domain.pedestrian import ExitDef, PedestrianModel, RouteSegment, StartGroup
 from parallel_contracts.geometry import MultiPolygonGeom, PolygonGeom
 from parallel_contracts.provenance import Provenance, ProvenanceKind, SourcedQuantity
-from parallel_contracts.quality import QualityAssessment, QualityState
+from parallel_contracts.quality import QUALITY_LABELS, QualityAssessment, QualityState
 from parallel_contracts.scene import Measurement, SceneRevisionContent, VisualAsset
-from parallel_core.access import Action, require_project
+from parallel_core.access import Action, require_project, visible_case_ids
 from parallel_core.audit import record as audit
 from parallel_core.db import utcnow
-from parallel_core.models import DomainModel, Scene, SceneRevision, SourceAsset, SpatialObject
+from parallel_core.models import (
+    DomainModel,
+    DomainModelRevision,
+    ReviewRecord,
+    Scene,
+    SceneRevision,
+    SimulationRun,
+    SourceAsset,
+    SpatialObject,
+)
 from parallel_core.revisions import create_scene_revision, publish, update_scene_draft
 from parallel_scene.geometry import validate_polygon
 from parallel_scene.measurement import evaluate
@@ -111,6 +120,70 @@ def create_scene(project_id: str, body: SceneIn, user: CurrentUser, db: DB):
     return rev
 
 
+def quality_view(db, user, rev: SceneRevision, sc: Scene, content: SceneRevisionContent) -> list[dict]:
+    """Quality states as recorded on the revision, completed by the downstream states the records now show.
+
+    A revision is immutable, so model preparation, review and integration checks that happen later are
+    read from the models, reviews and runs that cite it. Calibration is never inferred.
+    """
+    cases = set(visible_case_ids(db, user, sc.project_id))
+    in_view = lambda case_id: case_id is None or case_id in cases  # noqa: E731
+    models = [
+        (mr, dm)
+        for mr, dm in db.execute(
+            select(DomainModelRevision, DomainModel)
+            .join(DomainModel, DomainModel.id == DomainModelRevision.domain_model_id)
+            .where(DomainModel.project_id == sc.project_id, DomainModelRevision.content["scene_revision_id"].astext == rev.id)
+            .order_by(DomainModelRevision.created_at)
+        )
+        if in_view(dm.case_id)
+    ]
+    ids = [mr.id for mr, _ in models]
+    name = {mr.id: f"{dm.name} revision {mr.number}" for mr, dm in models}
+    approved = db.scalars(
+        select(ReviewRecord).where(
+            ReviewRecord.object_type == "domain_model_revision", ReviewRecord.object_id.in_(ids), ReviewRecord.status == "approved"
+        )
+    ).all() if ids else []
+    runs = [
+        r
+        for r in db.scalars(
+            select(SimulationRun).where(SimulationRun.domain_model_revision_id.in_(ids), SimulationRun.state == "completed")
+        )
+        if in_view(r.case_id)
+    ] if ids else []
+    verified = [r for r in runs if (cc := r.result_summary.get("crosschecks") or []) and all(c.get("passed") for c in cc)]
+
+    derived: dict[QualityState, tuple[bool, str]] = {
+        QualityState.domain_model_prepared: (
+            bool(models),
+            "; ".join(name[i] for i in ids) if models else "No domain model cites this scene revision.",
+        ),
+        QualityState.model_reviewed: (
+            bool(approved),
+            "; ".join(f"Approved review of {name[r.object_id]}" for r in approved) if approved
+            else "No approved review of a model prepared from this revision.",
+        ),
+        QualityState.simulation_integration_verified: (
+            bool(verified),
+            f"{len(verified)} completed run(s) passed all their native cross-checks, "
+            f"for example {verified[0].label or verified[0].id[:8]}"
+            if verified else ("Completed runs have no fully passing native cross-checks." if runs else "No completed run uses a model from this revision."),
+        ),
+    }
+    out = []
+    for rec in content.quality.records:
+        if not rec.achieved and rec.state in derived:
+            ok, evidence = derived[rec.state]
+            out.append({"state": rec.state.value, "label": QUALITY_LABELS[rec.state], "achieved": ok, "evidence": evidence, "source": "derived"})
+        else:
+            evidence = rec.evidence or ("Requires calibration against independent observations; none recorded."
+                                        if rec.state == QualityState.model_calibrated else None)
+            out.append({"state": rec.state.value, "label": QUALITY_LABELS[rec.state], "achieved": rec.achieved,
+                        "evidence": evidence, "source": "recorded"})
+    return out
+
+
 @router.get("/scenes/{scene_id}/revisions", response_model=list[SceneRevOut])
 def scene_revisions(scene_id: str, user: CurrentUser, db: DB):
     _scene(db, user, scene_id)
@@ -131,7 +204,8 @@ def get_scene_revision(rev_id: str, user: CurrentUser, db: DB):
         except KeyError:
             frames[v.id] = None
     return {**SceneRevOut.model_validate(rev).model_dump(mode="json"), "scene_name": sc.name, "project_id": sc.project_id,
-            "visual_asset_files": assets, "visual_to_canonical": frames, "geometry_warnings": geometry_warnings(content)}
+            "visual_asset_files": assets, "visual_to_canonical": frames, "geometry_warnings": geometry_warnings(content),
+            "quality_view": quality_view(db, user, rev, sc, content)}
 
 
 @router.post("/scenes/{scene_id}/revisions", response_model=SceneRevOut, status_code=201)

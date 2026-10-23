@@ -8,8 +8,10 @@ from sqlalchemy import select
 
 def test_seed_and_reset_only_touch_demonstration_projects(client, world, project):
     from parallel_api import demo
+    from parallel_api.routers.scenes import quality_view
+    from parallel_contracts.scene import SceneRevisionContent
     from parallel_core.db import session_scope
-    from parallel_core.models import Project, Report, SimulationRun, SourceAsset
+    from parallel_core.models import Project, Report, Scene, SceneRevision, SimulationRun, SourceAsset, User
     from parallel_core.storage import get_storage
 
     res = demo.seed(only=["urban_drainage"])
@@ -24,6 +26,15 @@ def test_seed_and_reset_only_touch_demonstration_projects(client, world, project
         )
         assert len({r.result_summary["rainfall_hash"] for r in runs}) == 1  # same storm in every scenario
         assert db.scalar(select(Report.status).where(Report.project_id == pid)) == "completed"
+        # downstream quality states are read from the model and runs that cite the scene revision
+        sc = db.scalars(select(Scene).where(Scene.project_id == pid)).one()
+        rev = db.get(SceneRevision, sc.current_revision_id)
+        presenter = db.scalar(select(User).where(User.email == "presenter@parallel-demo.example"))
+        q = {r["state"]: r for r in quality_view(db, presenter, rev, sc, SceneRevisionContent.model_validate(rev.content))}
+        assert q["domain_model_prepared"]["achieved"] and q["domain_model_prepared"]["source"] == "derived"
+        assert q["simulation_integration_verified"]["achieved"], q["simulation_integration_verified"]
+        assert not q["model_reviewed"]["achieved"] and not q["model_calibrated"]["achieved"]
+        assert not q["visual_reconstruction_available"]["achieved"]  # a plan, not a capture
         docs = {a.filename for a in db.scalars(select(SourceAsset).where(SourceAsset.project_id == pid))}
         assert {"source-information.md", "presenter-notes.md"} <= docs
         keys = [a.storage_key for a in db.scalars(select(SourceAsset).where(SourceAsset.project_id == pid))]

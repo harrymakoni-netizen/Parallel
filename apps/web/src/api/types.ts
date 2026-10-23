@@ -128,7 +128,7 @@ export interface VisualAsset {
 export interface QualityRecord {
   state: string;
   achieved: boolean;
-  basis?: string;
+  evidence?: string | null;
 }
 export interface SceneContent {
   scene_id: string;
@@ -144,10 +144,19 @@ export interface SceneContent {
   tolerance?: { abs_m?: number; rel?: number; purpose?: string } | null;
   provenance: Provenance;
 }
+export interface QualityView {
+  state: string;
+  label: string;
+  achieved: boolean;
+  evidence: string | null;
+  /** recorded on the revision, or derived from the models, reviews and runs that cite it */
+  source: "recorded" | "derived";
+}
 export interface SceneRevision extends Revision {
   scene_id: string;
   parent_revision_id: string | null;
   content: SceneContent & Json;
+  quality_view?: QualityView[];
 }
 export interface DomainModel {
   id: string;

@@ -687,7 +687,7 @@ def build_urban_planning(api: Api, ctx: dict) -> str:
         )
         for k, v in nodes.items()
     ]
-    plan_scene(
+    scene_rev = plan_scene(
         api,
         pid,
         "Corridor plan (synthetic)",
@@ -696,7 +696,8 @@ def build_urban_planning(api: Api, ctx: dict) -> str:
         "Road centrelines and junctions of the synthetic corridor",
     )
     dm = api.post(
-        f"/projects/{pid}/models", json={"name": "Crossroads network", "content": env.model_dump(mode="json")}
+        f"/projects/{pid}/models",
+        json={"name": "Crossroads network", "content": {**env.model_dump(mode="json"), "scene_revision_id": scene_rev}},
     )["domain_model_id"]
     a = [
         assumption(
@@ -829,7 +830,7 @@ def build_drainage(api: Api, ctx: dict) -> str:
         for k in c.conduits
         if k.from_node in pts and k.to_node in pts
     ]
-    plan_scene(
+    scene_rev = plan_scene(
         api,
         pid,
         "Catchment network plan (synthetic)",
@@ -845,7 +846,10 @@ def build_drainage(api: Api, ctx: dict) -> str:
     )
     dm = api.post(
         f"/projects/{pid}/models",
-        json={"name": "Mill Lane drainage network", "content": env.model_dump(mode="json")},
+        json={
+            "name": "Mill Lane drainage network",
+            "content": {**env.model_dump(mode="json"), "scene_revision_id": scene_rev},
+        },
     )["domain_model_id"]
     a = [
         assumption(

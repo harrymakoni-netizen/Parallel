@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, sameOrigin } from "../../api/client";
 import { useCases, useObservations, useOverview, useRunData, useRuns, useSceneRevision, useSceneRevisions, useScenes, useScenarios } from "../../api/hooks";
-import type { Measurement, SceneContent, SpatialObject } from "../../api/types";
+import type { Measurement, QualityView, SceneContent, SpatialObject } from "../../api/types";
 import { Empty, ErrorNote, Icon, KV, ProvenanceBadge, StatusBadge, fmtNum, humanise } from "../../components/ui";
 import { SceneViewer, type Marker, type PlaybackData, type ViewMode } from "../../scene/viewer";
 import { useProjectId } from "./ProjectLayout";
@@ -36,15 +36,15 @@ export default function SceneWorkspace() {
   }
   if (!rev.data) return <div className="page"><ErrorNote error={rev.error} /></div>;
   return (
-    <Workspace key={rev.data.id} revId={rev.data.id} content={rev.data.content as SceneContent} status={rev.data.status} number={rev.data.number}
+    <Workspace key={rev.data.id} revId={rev.data.id} content={rev.data.content as SceneContent} quality={rev.data.quality_view} status={rev.data.status} number={rev.data.number}
       sceneName={scene?.name ?? "Scene"} sceneId={scene!.id}
       revisions={(revs.data ?? []).map((r) => ({ id: r.id, number: r.number, status: r.status }))}
       onRevision={(id) => setParams((p) => { p.set("rev", id); return p; })} />
   );
 }
 
-function Workspace({ revId, content, status, number, sceneName, sceneId, revisions, onRevision }: {
-  revId: string; content: SceneContent; status: string; number: number; sceneName: string; sceneId: string;
+function Workspace({ revId, content, quality, status, number, sceneName, sceneId, revisions, onRevision }: {
+  revId: string; content: SceneContent; quality?: QualityView[]; status: string; number: number; sceneName: string; sceneId: string;
   revisions: { id: string; number: number; status: string }[]; onRevision: (id: string) => void;
 }) {
   const pid = useProjectId();
@@ -65,6 +65,7 @@ function Workspace({ revId, content, status, number, sceneName, sceneId, revisio
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(4);
   const [notice, setNotice] = useState<string | null>(null);
+  const [gridStep, setGridStep] = useState<number | null>(null);
   const runA = params.get("run");
   const runB = params.get("compare");
   const playA = useRunData<PlaybackData>(runA ?? undefined, "playback.json", !!runA);
@@ -95,6 +96,7 @@ function Workspace({ revId, content, status, number, sceneName, sceneId, revisio
     }
     vs.forEach((v) => {
       v.onPick = setSelected;
+      v.onGrid = setGridStep;
       v.onMeasure = (a, b) => setMeasure({ a: a.toArray(), b: b.toArray(), d: a.distanceTo(b) });
     });
     return () => vs.forEach((v) => v.dispose());
@@ -264,10 +266,11 @@ function Workspace({ revId, content, status, number, sceneName, sceneId, revisio
           <div className="page"><div className="note warn">3D view unavailable: this browser does not provide WebGL 2. All objects, measurements and quality states are listed in the side panels.</div></div>
         )}
         {runB && <div className="ws-split-labels"><span>{sname.get(runs.data?.items.find((r) => r.id === runA)?.scenario_id ?? "") ?? "Run A"}</span><span>{sname.get(runs.data?.items.find((r) => r.id === runB)?.scenario_id ?? "") ?? "Run B"}</span></div>}
+        {gl && gridStep && <div className="ws-scale" aria-hidden="true">Grid {fmtNum(gridStep)} m</div>}
         {notice && <div className="ws-notice" role="status">{notice} <button className="btn btn-small btn-ghost" onClick={() => setNotice(null)}>Dismiss</button></div>}
       </div>
       <aside className="ws-right" aria-label="Properties">
-        {sel ? <ObjectPanel o={sel} /> : <ScenePanel content={content} />}
+        {sel ? <ObjectPanel o={sel} /> : <ScenePanel content={content} quality={quality} />}
         {measure && <MeasurePanel revId={revId} m={measure} />}
       </aside>
       <div className="ws-timeline" aria-label="Playback">
@@ -330,17 +333,27 @@ function ObjectPanel({ o }: { o: SpatialObject }) {
   );
 }
 
-function ScenePanel({ content }: { content: SceneContent }) {
+function ScenePanel({ content, quality }: { content: SceneContent; quality?: QualityView[] }) {
+  const states: QualityView[] = quality ?? content.quality.records.map((q) => ({
+    state: q.state, label: humanise(q.state), achieved: q.achieved, evidence: q.evidence ?? null, source: "recorded",
+  }));
   return (
     <div className="stack">
       <h2>Scene</h2>
       <div className="row"><ProvenanceBadge kind={content.provenance.kind} />{content.hypothetical && <span className="badge badge-warning">Hypothetical</span>}</div>
       <h3>Quality states</h3>
-      <ul className="small" style={{ paddingLeft: 16, margin: 0 }}>
-        {content.quality.records.map((q) => (
-          <li key={q.state}><StatusBadge status={q.achieved ? "ok" : "unavailable"} label={q.achieved ? "Yes" : "No"} /> {humanise(q.state)}</li>
+      <p className="muted small" style={{ margin: 0 }}>Each state is assessed on its own: a reconstruction never implies the others.</p>
+      <ul className="quality-list">
+        {states.map((q) => (
+          <li key={q.state}>
+            <StatusBadge status={q.achieved ? "ok" : "unavailable"} label={q.achieved ? "Yes" : "No"} />
+            <div>
+              <div>{q.label}</div>
+              {q.evidence && <div className="muted small">{q.evidence}</div>}
+            </div>
+          </li>
         ))}
-        {!content.quality.records.length && <li className="muted">No quality states recorded.</li>}
+        {!states.length && <li className="muted">No quality states recorded.</li>}
       </ul>
       {content.measurements.length > 0 && (
         <>
@@ -359,21 +372,22 @@ function ScenePanel({ content }: { content: SceneContent }) {
   );
 }
 
+/** Measurements as a compact list: the side panel is too narrow for a four-column table. */
 function MeasurementTable({ ms }: { ms: Measurement[] }) {
   return (
-    <table className="data small">
-      <thead><tr><th>Check</th><th className="num">Ref (m)</th><th className="num">Error (m)</th><th>Tolerance</th></tr></thead>
-      <tbody>
-        {ms.map((m) => (
-          <tr key={m.id}>
-            <td>{m.label}<div className="muted">{m.purpose.replace(/_/g, " ")}</div></td>
-            <td className="num">{fmtNum(m.reference_distance?.value)}</td>
-            <td className="num">{fmtNum(m.abs_error_m)}</td>
-            <td>{m.within_tolerance == null ? "—" : <StatusBadge status={m.within_tolerance ? "ok" : "warning"} label={m.within_tolerance ? "Within" : "Outside"} />}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="measure-list">
+      {ms.map((m) => (
+        <li key={m.id}>
+          <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap", alignItems: "start" }}>
+            <span>{m.label}</span>
+            {m.within_tolerance != null && <StatusBadge status={m.within_tolerance ? "ok" : "warning"} label={m.within_tolerance ? "Within" : "Outside"} />}
+          </div>
+          <div className="muted small">
+            {humanise(m.purpose)} · reference {fmtNum(m.reference_distance?.value)} m · error {fmtNum(m.abs_error_m)} m
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

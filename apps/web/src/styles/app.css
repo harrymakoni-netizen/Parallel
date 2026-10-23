@@ -236,6 +236,11 @@ main {
 .row > .card + .card {
   margin-top: 0;
 }
+.page > .grid + .card,
+.page > .card + .grid,
+.page > .grid + .grid {
+  margin-top: 14px;
+}
 .card-head {
   display: flex;
   justify-content: space-between;
@@ -378,6 +383,17 @@ input[type="checkbox"],
 input[type="radio"] {
   min-height: auto;
   accent-color: var(--accent);
+  flex-shrink: 0;
+}
+/* a checkbox stays beside its label text, however long the text */
+label.row:has(> input[type="checkbox"]),
+label.row:has(> input[type="radio"]) {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+label.row > input[type="checkbox"],
+label.row > input[type="radio"] {
+  margin-top: 3px;
 }
 input:focus-visible,
 select:focus-visible,
@@ -784,6 +800,41 @@ main.with-assistant {
   border: 1px solid var(--border);
   font-size: 12px;
 }
+.ws-scale {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  pointer-events: none;
+}
+.quality-list,
+.measure-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.quality-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.measure-list li {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.measure-list li:last-child {
+  border-bottom: 0;
+}
 .ws-notice {
   position: absolute;
   bottom: 10px;
@@ -853,7 +904,7 @@ main.with-assistant {
   color: #eef3fb;
   border: 1px solid rgba(255, 255, 255, 0.18);
   white-space: nowrap;
-  transform: translateY(-8px);
+  margin-top: -6px;
 }
 .scene-label.warn {
   border-color: #d03b3b;
