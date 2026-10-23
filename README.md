@@ -91,7 +91,7 @@ S3 storage, single sign-on, backups and upgrades.
 ## Tests
 
 ```bash
-uv run pytest                              # 152 tests: real PostgreSQL, real engines, real reconstruction
+uv run pytest                              # 157 tests: real PostgreSQL, real engines, real reconstruction
 uv run ruff check .
 (cd apps/web && npm run typecheck && E2E_PASSWORD=... npm run e2e)   # 17 browser tests
 ```
@@ -106,6 +106,7 @@ verified, how, and on which platform is in [docs/validation.md](docs/validation.
 | [Architecture](docs/architecture.md) | Components, data flow, job lifecycle, storage, security model |
 | [Data contracts](docs/data-contracts.md) | Provenance, coordinates, scenes, domain models, scenarios, result envelopes, normalisation, reports |
 | [Engine matrix](docs/engine-matrix.md) | Every engine: role, licence, modes, tested versions, limitations, availability (generated) |
+| [Engine verification record](docs/engine-verification.md) | Every native cross-check with its tolerance and rationale, from real reference runs (generated) |
 | [Metric catalogue](docs/metrics.md) | Every metric's definition, calculation, sources and missing-value rule (generated) |
 | [HTTP API](docs/api.md) | Endpoints by area, with the [OpenAPI document](docs/api/openapi.json) (generated) |
 | [Reconstruction](docs/reconstruction.md) | Capture guidance, the pipeline, setup and a worked example |

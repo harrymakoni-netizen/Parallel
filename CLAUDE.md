@@ -14,6 +14,8 @@ uv run pytest                                   # all Python tests (needs Postgr
 uv run pytest services/api/tests/test_crashlens.py -k evidence   # one area
 uv run ruff check .                             # lint (line length 110)
 uv run python scripts/reference_docs.py         # regenerate docs/metrics.md, api.md, openapi.json, engine-matrix.md
+uv run python scripts/engine_verification.py    # run reference workflows; regenerate docs/engine-verification.md
+uv run python scripts/benchmark.py              # benchmark workloads (see its docstring); --summary writes docs/benchmarks.md
 uv run python -m parallel_api.demo seed|status|reset
 uv run python -m parallel_api.admin create-admin --email ... --organisation ...
 uv run python -m parallel_core.backup create|restore|verify ...
