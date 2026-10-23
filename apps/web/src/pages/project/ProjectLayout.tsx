@@ -62,7 +62,7 @@ export function ProjectLayout() {
           {assistant ? "Close assistant" : "Assistant"}
         </button>
       </nav>
-      <main className={assistant ? "with-assistant" : undefined}>
+      <div className={`project-main${assistant ? " with-assistant" : ""}`}>
         <Suspense fallback={<div className="page"><Loading /></div>}>
           <Routes>
             <Route index element={<Overview />} />
@@ -83,7 +83,7 @@ export function ProjectLayout() {
           </Routes>
           {assistant && <AssistantPanel onClose={() => setAssistant(false)} />}
         </Suspense>
-      </main>
+      </div>
     </div>
   );
 }

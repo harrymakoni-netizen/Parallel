@@ -69,7 +69,7 @@ export function Shell({ me, children }: { me: Me; children: ReactNode }) {
           <button className="btn btn-ghost btn-small" onClick={signOut}>Sign out</button>
         </div>
       </header>
-      <div id="main">{children}</div>
+      <main id="main" tabIndex={-1}>{children}</main>
     </MeContext.Provider>
   );
 }

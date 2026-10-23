@@ -193,7 +193,7 @@ function Workspace({ revId, content, quality, status, number, sceneName, sceneId
   return (
     <div className="workspace">
       <div className="ws-toolbar" role="toolbar" aria-label="Scene tools">
-        <strong>{sceneName}</strong>
+        <h1 className="ws-title">{sceneName}<span className="visually-hidden"> (scene workspace)</span></h1>
         <label className="visually-hidden" htmlFor="ws-rev">Scene revision</label>
         <select id="ws-rev" value={revId} onChange={(e) => onRevision(e.target.value)}>
           {revisions.map((r) => <option key={r.id} value={r.id}>Revision {r.number} ({r.status})</option>)}

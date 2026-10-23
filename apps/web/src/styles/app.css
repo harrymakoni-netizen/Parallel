@@ -180,7 +180,8 @@ code,
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
-main {
+main,
+.project-main {
   min-width: 0;
 }
 .page {
@@ -657,7 +658,7 @@ pre.json {
 }
 
 /* ---------------------------------------------------------------- assistant drawer */
-main.with-assistant {
+.project-main.with-assistant {
   padding-right: min(420px, 100vw);
 }
 .assistant {
@@ -721,7 +722,7 @@ main.with-assistant {
   min-height: 44px;
 }
 @media (max-width: 820px) {
-  main.with-assistant {
+  .project-main.with-assistant {
     padding-right: 0;
   }
 }
@@ -744,6 +745,11 @@ main.with-assistant {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-1);
+}
+.ws-title {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0;
 }
 .ws-left,
 .ws-right {
@@ -956,4 +962,8 @@ main.with-assistant {
 .timeline li.proposed::before {
   background: transparent;
   border: 2px dashed #9085e9;
+}
+/* the skip link moves focus to main; the landmark itself needs no focus ring */
+main:focus {
+  outline: none;
 }
