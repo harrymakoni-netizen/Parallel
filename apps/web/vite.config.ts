@@ -7,5 +7,6 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5173, proxy: { "/api": { target: api, changeOrigin: false } } },
   preview: { port: 4173, proxy: { "/api": { target: api, changeOrigin: false } } },
-  build: { chunkSizeWarningLimit: 3000, sourcemap: true },
+  // source maps for local and container builds; public Vercel builds ship without them
+  build: { chunkSizeWarningLimit: 3000, sourcemap: !process.env.VERCEL },
 });

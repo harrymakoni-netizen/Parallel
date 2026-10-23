@@ -81,6 +81,24 @@ docker build --build-arg HTTPS_PROXY=$HTTPS_PROXY --secret id=ca,src=/path/to/ca
 | Results worker | `parallel-app` with `-Q results`. |
 | Scheduler | Exactly one `celery beat` (recovery sweep every minute, engine availability every five minutes). |
 
+### Browser application on Vercel
+
+`apps/web/vercel.json` deploys the browser application to Vercel (root directory `apps/web`, Vite build,
+client-side routes served by `index.html`, the same security headers as the nginx image). Vercel hosts
+only the browser application: the API, workers, database and engines run elsewhere (above).
+
+Until an API is connected, every `/api` request is answered by `apps/web/api/unavailable.js` with a
+503 in the API's error shape, so the sign-in page explains that the backend is not connected rather
+than failing obscurely. To connect a hosted API, replace the first rewrite in `vercel.json` with
+
+```json
+{ "source": "/api/(.*)", "destination": "https://your-api.example.org/api/$1" }
+```
+
+and set the API's `PARALLEL_WEB_ORIGIN` and `PARALLEL_PUBLIC_BASE_URL` to the Vercel address. Large
+capture uploads and long progress streams pass through Vercel's proxy, which has its own size and
+duration limits; for heavy use, serve the application from the nginx image beside the API instead.
+
 ### Engine availability across hosts
 
 Simulation workers report which managed engines they can run when they start and every five minutes;
