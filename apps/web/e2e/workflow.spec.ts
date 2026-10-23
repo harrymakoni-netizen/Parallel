@@ -18,7 +18,7 @@ test.describe("demonstration workflow", () => {
   test("the scene workspace draws prepared geometry and plays back an engine trajectory", async ({ page, demos, api, errors }) => {
     const pid = demos.mine_evacuation.id;
     const runs = await api<{ items: Run[] }>(`/projects/${pid}/runs`);
-    const run = runs.items.find((r) => r.state === "completed" && r.engine_id === "jupedsim")!;
+    const run = runs.items.find((r) => r.state === "completed" && r.engine_id === "jupedsim" && (r.label ?? "").startsWith("Saved result"))!;
     await page.goto(`/p/${pid}/scene?run=${run.id}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Level 3 section plan");
     await expect(page.locator(".ws-canvas canvas").first()).toBeVisible();
@@ -45,7 +45,7 @@ test.describe("demonstration workflow", () => {
   test("a run shows its provenance, native cross-checks, metrics and a table for every chart", async ({ page, demos, api, errors }) => {
     const pid = demos.mine_evacuation.id;
     const runs = await api<{ items: Run[] }>(`/projects/${pid}/runs`);
-    const run = runs.items.find((r) => r.state === "completed")!;
+    const run = runs.items.find((r) => r.state === "completed" && (r.label ?? "").startsWith("Saved result"))!;
     await open(page, `/p/${pid}/runs/${run.id}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Saved result");
     await expect(page.getByText(/jupedsim 1\.4\.2/)).toBeVisible();

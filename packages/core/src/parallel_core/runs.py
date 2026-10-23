@@ -219,6 +219,17 @@ def submit_run(
         raise SubmissionError(
             f"Organisation concurrency limit reached ({s.org_concurrent_run_limit} active runs)", status=429
         )
+    month_start = utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month = db.scalar(
+        select(func.count())
+        .select_from(SimulationRun)
+        .join(Project)
+        .where(Project.organisation_id == project.organisation_id, SimulationRun.created_at >= month_start)
+    )
+    if (this_month or 0) >= s.org_monthly_run_quota:
+        raise SubmissionError(
+            f"Organisation monthly run quota reached ({s.org_monthly_run_quota} runs this month)", status=429
+        )
     # Freeze the exact revisions the run will use.
     if scenario_revision.status != "published":
         publish(db, scenario_revision)

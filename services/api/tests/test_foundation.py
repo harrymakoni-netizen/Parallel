@@ -372,3 +372,22 @@ def test_managed_availability_comes_from_fresh_worker_reports(client, world, mon
     engine_status.forget_worker("sim@test")
     with session_scope() as db:
         assert not db.scalars(select(WorkerEngineReport)).all()
+
+
+def test_organisation_quotas_refuse_runs_before_any_work(client, world, project, monkeypatch):
+    from parallel_core import runs
+
+    ed = world["editor"].h
+    sc = client.get(f"/api/v1/projects/{project}/scenarios", headers=ed).json()[0]
+    real = runs.get_settings()
+    done = client.get(f"/api/v1/projects/{project}/runs", headers=ed).json()["total"]
+    assert done > 0  # earlier tests in this organisation ran this month
+
+    monkeypatch.setattr(runs, "get_settings", lambda: real.model_copy(update={"org_monthly_run_quota": done}))
+    r = client.post(f"/api/v1/projects/{project}/runs", headers=ed, json={"scenario_revision_id": sc["current_revision_id"]})
+    assert r.status_code == 429 and "monthly run quota" in r.json()["error"]["message"]
+
+    monkeypatch.setattr(runs, "get_settings", lambda: real.model_copy(update={"org_concurrent_run_limit": 0}))
+    r = client.post(f"/api/v1/projects/{project}/runs", headers=ed, json={"scenario_revision_id": sc["current_revision_id"]})
+    assert r.status_code == 429 and "concurrency limit" in r.json()["error"]["message"]
+    assert client.get(f"/api/v1/projects/{project}/runs", headers=ed).json()["total"] == done  # nothing created
