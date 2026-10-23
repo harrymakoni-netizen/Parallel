@@ -229,9 +229,23 @@ def update_scenario_draft(rev: ScenarioRevision, content: ScenarioContent) -> Sc
 
 
 def adopt(rev: ScenarioRevision, user_id: str) -> ScenarioRevision:
-    """Explicit user action turning an AI-drafted scenario into an adoptable model input."""
+    """Explicit user action turning an AI-drafted scenario into an adoptable model input.
+
+    Every AI-suggested value inside the draft records the adopting user, so the run
+    gate (which refuses unadopted AI values) accepts it from now on.
+    """
+    import copy
+
+    from parallel_contracts.provenance import mark_ai_adopted
+
+    now = utcnow()
+    if rev.status == "draft":
+        data = copy.deepcopy(rev.content)
+        if mark_ai_adopted(data, user_id, now):
+            rev.content = data
+            rev.content_sha256 = sha256_json(data)
     rev.adopted_by = user_id
-    rev.adopted_at = utcnow()
+    rev.adopted_at = now
     return rev
 
 

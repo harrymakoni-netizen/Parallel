@@ -601,6 +601,7 @@ class AssistantSession(IdMixin, TimestampMixin, Base):
 class AssistantMessage(IdMixin, TimestampMixin, Base):
     __tablename__ = "assistant_message"
     session_id: Mapped[str] = fk("assistant_session.id")
+    seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # replay order
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[list | dict | str] = mapped_column(J)
     usage: Mapped[dict] = mapped_column(J, default=dict)
@@ -609,6 +610,12 @@ class AssistantMessage(IdMixin, TimestampMixin, Base):
 class AssistantToolCall(IdMixin, TimestampMixin, Base):
     __tablename__ = "assistant_tool_call"
     session_id: Mapped[str] = fk("assistant_session.id")
+    seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tool_use_id: Mapped[str | None] = mapped_column(String(80))
+    # suggestions (scenario drafts, report narratives) become inputs only through explicit adoption
+    adopted_by: Mapped[str | None] = fk("app_user.id", ondelete="SET NULL", nullable=True)
+    adopted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    adopted_object_id: Mapped[str | None] = mapped_column(String(32))
     tool_name: Mapped[str] = mapped_column(String(60))
     arguments: Mapped[dict] = mapped_column(J)
     result: Mapped[dict] = mapped_column(J, default=dict)

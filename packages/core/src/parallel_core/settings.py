@@ -54,9 +54,11 @@ class Settings(BaseSettings):
     org_concurrent_run_limit: int = 8
     org_monthly_run_quota: int = 5000
 
-    # AI assistant
+    # AI assistant (optional: every modelling and simulation workflow works without it)
+    assistant_provider: Literal["anthropic", "scripted", "disabled"] = "anthropic"
     anthropic_api_key: str | None = None
     assistant_model: str = "claude-opus-5-5"
+    assistant_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     assistant_max_tool_rounds: int = 8
 
 

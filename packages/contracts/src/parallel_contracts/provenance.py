@@ -142,3 +142,18 @@ def find_unadopted_ai_values(data: Any, path: str = "$") -> list[str]:
         for i, v in enumerate(data):
             found.extend(find_unadopted_ai_values(v, f"{path}[{i}]"))
     return found
+
+
+def mark_ai_adopted(data: Any, user_id: str, at: datetime) -> int:
+    """Record a user's explicit adoption on every unadopted AI-suggested value (in place); returns the count."""
+    n = 0
+    if isinstance(data, dict):
+        if data.get("kind") == ProvenanceKind.ai_suggested.value and not data.get("adopted_by"):
+            data["adopted_by"], data["adopted_at"] = user_id, at.isoformat()
+            n += 1
+        for v in data.values():
+            n += mark_ai_adopted(v, user_id, at)
+    elif isinstance(data, list):
+        for v in data:
+            n += mark_ai_adopted(v, user_id, at)
+    return n
