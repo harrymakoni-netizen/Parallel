@@ -2694,7 +2694,7 @@
      "scenes"
     ],
     "summary": "Derive Model",
-    "description": "Prepare a pedestrian domain model from prepared-model objects in a scene revision.\n\nUses objects of kind walkable_area, obstacle, exit/refuge, start_zone and route_segment. Captured appearance\nis never treated as walkable geometry automatically: only explicitly prepared objects are used.",
+    "description": "Prepare a pedestrian domain model from prepared-model objects in a scene revision.\n\nUses objects of kind walkable_area, obstacle, exit/refuge, start_zone and route_segment. Captured appearance\nis never treated as walkable geometry automatically: only explicitly prepared objects are used. Hypothetical\nobjects (proposals) are left out unless requested, so a model of the existing situation never silently\ncontains a proposal; when they are included, the model's provenance names them.",
     "operationId": "derive_model_api_v1_scene_revisions__rev_id__derive_model_post",
     "parameters": [
      {
@@ -8513,6 +8513,180 @@
     }
    }
   },
+  "/api/v1/external-training/notebook": {
+   "get": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Notebook",
+    "description": "The Colab/Kaggle notebook that trains a splat from a training package.",
+    "operationId": "notebook_api_v1_external_training_notebook_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/reconstructions/{job_id}/training-package": {
+   "post": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Training Package",
+    "description": "Build (or return) the training package of a completed reconstruction, stored as a hashed asset.",
+    "operationId": "training_package_api_v1_reconstructions__job_id__training_package_post",
+    "parameters": [
+     {
+      "name": "job_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Job Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AssetOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/reconstructions/{job_id}/import-splat": {
+   "post": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Import Splat",
+    "description": "Attach a Gaussian splat trained outside Parallel to the reconstruction's scene as a new revision.",
+    "operationId": "import_splat_api_v1_reconstructions__job_id__import_splat_post",
+    "parameters": [
+     {
+      "name": "job_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Job Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_import_splat_api_v1_reconstructions__job_id__import_splat_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/metrics": {
    "get": {
     "tags": [
@@ -9060,6 +9234,32 @@
      "supplied_provenance"
     ],
     "title": "Body_external_result_api_v1_runs__run_id__external_result_post"
+   },
+   "Body_import_splat_api_v1_reconstructions__job_id__import_splat_post": {
+    "properties": {
+     "splat": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Splat"
+     },
+     "training_info": {
+      "anyOf": [
+       {
+        "type": "string",
+        "contentMediaType": "application/octet-stream"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Training Info"
+     }
+    },
+    "type": "object",
+    "required": [
+     "splat"
+    ],
+    "title": "Body_import_splat_api_v1_reconstructions__job_id__import_splat_post"
    },
    "Body_upload_asset_api_v1_projects__project_id__assets_post": {
     "properties": {
@@ -9628,6 +9828,12 @@
       "type": "integer",
       "title": "Population Default",
       "default": 20
+     },
+     "include_hypothetical": {
+      "type": "boolean",
+      "title": "Include Hypothetical",
+      "description": "Also use objects that belong to a hypothetical scenario (for a layout alternative). By default only recorded-scene and prepared-model objects describe the existing situation.",
+      "default": false
      }
     },
     "type": "object",

@@ -110,6 +110,7 @@ verified, how, and on which platform is in [docs/validation.md](docs/validation.
 | [Metric catalogue](docs/metrics.md) | Every metric's definition, calculation, sources and missing-value rule (generated) |
 | [HTTP API](docs/api.md) | Endpoints by area, with the [OpenAPI document](docs/api/openapi.json) (generated) |
 | [Reconstruction](docs/reconstruction.md) | Capture guidance, the pipeline, setup and a worked example |
+| [External training](docs/external-training.md) | Train a Gaussian splat on a free or rented GPU and import it, with capture sizing |
 | [Demonstration guide](docs/demo-guide.md) | The five demonstrations, presenter notes, seeding and reset |
 | [Validation](docs/validation.md) | Test strategy, engine verification, access control, backups, end-to-end and container checks |
 | [Benchmarks](docs/benchmarks.md) | Measured workloads with the host recorded |

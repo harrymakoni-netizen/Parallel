@@ -49,7 +49,7 @@ failure or cancellation, and records its timing, log and outputs.
 | 3 | Frame extraction | FFmpeg samples video at the configured rate; images are normalised |
 | 4 | Frame filtering | Blur rejection by Laplacian variance (absolute floor and relative to the median sharpness) and near-duplicate removal by perceptual hash |
 | 5 | Pose estimation | COLMAP feature extraction, matching and incremental mapping; a minimum registered fraction is required |
-| 6 | Training | Splatfacto (nerfstudio) Gaussian training on a GPU worker, with the reference pipeline's presets. Without a GPU, the stage records why and the next stage exports an **untrained initialisation**, labelled as such |
+| 6 | Training | Splatfacto (nerfstudio) Gaussian training on a GPU worker, with the reference pipeline's presets. Without a GPU, the stage records why and the next stage exports an **untrained initialisation**, labelled as such. A splat trained on another GPU can be imported afterwards: see [external training](external-training.md) |
 | 7 | Visual export | Point cloud PLY and Gaussian splat PLY |
 | 8 | Geometry generation | Dominant ground plane by RANSAC (an algorithm estimate); a collision mesh only where Open3D is available |
 | 9 | Scale and orientation | With surveyed references: Umeyama similarity on control points, residuals on held-out check points. Without them: orientation from the ground plane only, and scale is recorded as unknown |

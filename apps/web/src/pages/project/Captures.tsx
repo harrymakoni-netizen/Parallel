@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, sameOrigin, streamEvents } from "../../api/client";
+import { ApiError, api, sameOrigin, streamEvents } from "../../api/client";
 import { useAssets, useBatches, useRecons } from "../../api/hooks";
 import type { Asset, ReconJob } from "../../api/types";
 import { Card, Dialog, ErrorNote, Field, PageHead, StatusBadge, fmtBytes, fmtDate, shortId } from "../../components/ui";
@@ -184,6 +184,85 @@ function ReconRow({ job }: { job: ReconJob }) {
         ))}
       </ol>
       {job.error && <ErrorNote error={job.error} />}
+      {job.status === "completed" && stages.find((x) => x.name === "reconstruction_training")?.status === "skipped" && (
+        <ExternalTraining job={job} />
+      )}
     </div>
+  );
+}
+
+interface SplatImport {
+  scene_revision_id: string;
+  gaussians: number;
+  alignment_check: { median_distance_fraction_of_spread: number; spread_ratio_splat_to_sparse: number };
+}
+
+/** Train the splat on a free or rented GPU outside Parallel, then import it as a new scene revision. */
+function ExternalTraining({ job }: { job: ReconJob }) {
+  const pid = useProjectId();
+  const qc = useQueryClient();
+  const [picked, setPicked] = useState<File[]>([]);
+  const pkg = useMutation({
+    mutationFn: async () => {
+      const a = await api.post<Asset>(`/reconstructions/${job.id}/training-package`);
+      const u = await api.get<{ url: string }>(`/assets/${a.id}/url`);
+      window.location.assign(sameOrigin(u.url));
+    },
+  });
+  const notebook = useMutation({
+    mutationFn: async () => {
+      const text = await api.get<string>("/external-training/notebook");
+      const url = URL.createObjectURL(new Blob([typeof text === "string" ? text : JSON.stringify(text)], { type: "application/x-ipynb+json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "parallel_splat_training.ipynb";
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+  const splat = picked.find((f) => f.name.toLowerCase().endsWith(".ply"));
+  const info = picked.find((f) => f.name.toLowerCase().endsWith(".json"));
+  const send = useMutation({
+    mutationFn: () => {
+      const f = new FormData();
+      f.append("splat", splat as File);
+      if (info) f.append("training_info", info);
+      return api.upload<SplatImport>(`/reconstructions/${job.id}/import-splat`, f);
+    },
+    onSuccess: () => {
+      setPicked([]);
+      qc.invalidateQueries({ queryKey: ["recons", pid] });
+      qc.invalidateQueries({ queryKey: ["scenes", pid] });
+    },
+  });
+  const check = send.error instanceof ApiError ? (send.error.details as { median_distance_fraction_of_spread?: number; spread_ratio_splat_to_sparse?: number } | null) : null;
+  return (
+    <details style={{ marginTop: 10 }}>
+      <summary><strong>Train the Gaussian splat on a free GPU</strong> <span className="muted small">(this reconstruction has only the untrained initialisation)</span></summary>
+      <ol className="small" style={{ paddingLeft: 18 }}>
+        <li>Download the training package: the frames and COLMAP model of this reconstruction, with a manifest of their hashes.</li>
+        <li>Download the notebook, open it in Google Colab (or Kaggle) with a GPU runtime, and run it. It uploads nothing to Parallel.</li>
+        <li>Import the <code>splat.ply</code> and <code>training_info.json</code> it produces. Parallel checks that the splat lines up with this reconstruction and adds it to the scene as a new revision, recorded as trained outside Parallel.</li>
+      </ol>
+      <div className="row">
+        <button className="btn btn-small" onClick={() => pkg.mutate()} disabled={pkg.isPending}>{pkg.isPending ? "Preparing…" : "Download training package"}</button>
+        <button className="btn btn-small" onClick={() => notebook.mutate()} disabled={notebook.isPending}>Download notebook</button>
+      </div>
+      <ErrorNote error={pkg.error ?? notebook.error} />
+      <div className="row" style={{ marginTop: 8 }}>
+        <label className="small" htmlFor={`imp-${job.id}`}>Trained splat (.ply) and training information (.json)</label>
+        <input id={`imp-${job.id}`} type="file" multiple accept=".ply,.json" onChange={(e) => setPicked(Array.from(e.target.files ?? []))} />
+        <button className="btn btn-small btn-primary" onClick={() => send.mutate()} disabled={!splat || send.isPending}>{send.isPending ? "Checking and importing…" : "Import trained splat"}</button>
+      </div>
+      <ErrorNote error={send.error} />
+      {check?.median_distance_fraction_of_spread !== undefined && (
+        <div className="muted small">Measured: median distance from the reconstruction's points to the nearest Gaussian was {(check.median_distance_fraction_of_spread * 100).toFixed(1)}% of the scene's spread (limit 5%); size ratio {check.spread_ratio_splat_to_sparse} (allowed 0.5 to 2).</div>
+      )}
+      {send.data && (
+        <div className="note" role="status">
+          Imported {send.data.gaussians.toLocaleString()} Gaussians; alignment check passed. <Link to={`../scene?rev=${send.data.scene_revision_id}`}>Open the new scene revision</Link>, then use <em>Load</em> beside the trained splat.
+        </div>
+      )}
+    </details>
   );
 }

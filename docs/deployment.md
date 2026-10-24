@@ -129,6 +129,8 @@ Run a simulation worker on an RTX host with `-Q gpu`, with Isaac Sim installed a
 both are *awaiting environment verification* ([implementation status](implementation-status.md)).
 Without a GPU worker, Isaac Sim reports *Worker unavailable* and reconstructions publish an untrained
 Gaussian initialisation, labelled as such.
+To use a free or rented GPU without connecting it to the deployment, train from a training package and
+import the result: see [external training](external-training.md).
 
 ### Licensed and operator-run engines
 

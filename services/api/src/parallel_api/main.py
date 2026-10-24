@@ -22,6 +22,7 @@ from .routers import (
     cases,
     comparisons,
     engines,
+    external_training,
     models,
     optimisations,
     organisations,
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
         reports,
         reviews,
         assistant,
+        external_training,
     ):
         api.include_router(r.router)
 

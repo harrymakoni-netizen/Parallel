@@ -34,7 +34,7 @@ Updated 2026-10-23 on branch `claude/gracious-allen-6xoln9`.
 | 12.5 | Quality states | Implemented and verified | Recorded on the revision; later states derived from the models, reviews and runs that cite it; calibration never inferred |
 | 13.1 | Supported inputs | In progress | See [supported inputs](#supported-inputs) |
 | 13.2 | Guided capture, offline upload | Implemented and verified | |
-| 13.3 to 13.5 | Processing stages, outputs, measurement validation | Implemented and verified (CPU); training awaiting environment | All eleven stages with checkpoints and resume; scale from surveyed references with held-out checks; tolerances with their stated purpose. Gaussian training needs an NVIDIA GPU with nerfstudio and has not been run; without it an untrained initialisation is published and labelled |
+| 13.3 to 13.5 | Processing stages, outputs, measurement validation | Implemented and verified (CPU); training awaiting environment | All eleven stages with checkpoints and resume; scale from surveyed references with held-out checks; tolerances with their stated purpose. Gaussian training needs an NVIDIA GPU with nerfstudio and has not been run; without it an untrained initialisation is published and labelled. A splat trained on a free or rented GPU with the supplied notebook can be imported ([external training](external-training.md)): the API, the alignment check and the web panel are tested, the notebook's training commands are not (no GPU here) |
 | 13.6 | Generated content only in hypothetical scenes | Implemented and verified | Enforced by the scene contract; Parallel does not itself generate scene content |
 | 14 | Scene preparation and editing | In progress | Done: object kinds (walkable areas, obstacles, exits, refuges, zones, routes, roads, junctions, conduits, vehicles), properties with provenance and belonging, revision creation, geometry validation before simulation (self-intersecting polygons, drainage, water and road network connectivity, required physical properties through the model schemas, and flags on non-specialist geomechanics properties), model import from files and editing as JSON, deriving a movement model from prepared objects. Missing: interactive drawing and editing of geometry in the 3D view, undo and redo, network editing tools, and export of scenes to other formats |
 | 15 | Engine integration framework | Implemented and verified | Common adapter interface, capability records, three execution modes, availability from real checks (worker-reported for managed engines) |
@@ -44,7 +44,7 @@ Updated 2026-10-23 on branch `claude/gracious-allen-6xoln9`.
 | 19 | Construction Sites | Implemented and verified | SimPy operations and JuPedSim evacuation; Isaac Sim, FLAC3D, 3DEC and OpenFOAM pathways as in the engine table |
 | 20 | Urban Planning | Implemented and verified | SUMO with the unfinished-trip guard; energy (EnergyPlus) awaiting environment |
 | 21 | Urban Drainage | Implemented and verified | SWMM with continuity and volume checks; no surface flood map from SWMM; HEC-RAS by file exchange awaiting environment |
-| 22.1 | Reconstruction AI | Implemented, awaiting environment verification | Splatfacto training path built; no GPU available |
+| 22.1 | Reconstruction AI | Implemented, awaiting environment verification | Splatfacto training path built; no GPU available. Training package export, a Colab/Kaggle notebook and import of an externally trained splat are built ([external training](external-training.md)); the notebook has not run on a real GPU |
 | 22.2 | AI scene assistance | In progress | Done: missing model information. Missing: suggested object labels, candidate zones, exits, evidence tags and candidate geometry |
 | 22.3 to 22.6 | Scenario drafting, allowed tools, numerical grounding, provider independence | Implemented and verified (with a scripted provider) | Not exercised against a live model: no API key on the verification host |
 | 23 | Comparison and optimisation | Implemented and verified | Controlled comparisons with compatibility checks; grid and coordinate search reporting the best tested candidate |
@@ -134,7 +134,7 @@ records are in the [engine verification record](engine-verification.md).
   against evidence targets; it never estimates collision dynamics itself, never gives probabilities
   that a hypothesis is true and never determines fault. A hash shows a file is unchanged since receipt,
   not that its content or timestamp is authentic.
-- **Reconstruction.** Training needs a GPU; without one, scenes carry an untrained initialisation.
+- **Reconstruction.** Training needs a GPU; without one, scenes carry an untrained initialisation. A splat trained elsewhere can be imported, recorded as trained outside Parallel (never as Parallel's own training); the notebook that produces it was written against nerfstudio's documented options and has not been run on a GPU, so expect to adjust it to the installed nerfstudio version. The import refuses a splat that is not in the reconstruction's coordinate frame.
   Captured surfaces never establish hidden geometry (pipes, inverts, rock properties). Scale requires
   surveyed references; without them scale is recorded as unknown.
 - **Calibration.** No module calibrates a model against observations; the quality state is never set
