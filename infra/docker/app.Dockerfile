@@ -14,6 +14,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
     PATH=/app/.venv/bin:$PATH
 
+# ffprobe: the API inspects every uploaded video (duration, resolution, codec) before accepting it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY infra/docker/build-ca.sh /usr/local/bin/build-ca
 RUN --mount=type=secret,id=ca,required=false \
     build-ca pip install --no-cache-dir "uv==${UV_VERSION}"
