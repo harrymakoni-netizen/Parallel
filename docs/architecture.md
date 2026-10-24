@@ -159,7 +159,7 @@ and are compared by those links and by residuals from collision-engine analyses:
 ## AI assistant
 
 The assistant is optional; every workflow works without it. It uses a provider interface
-(`services/api/.../assistant/providers.py`) with an Anthropic implementation, a scripted provider for
+(`services/api/.../assistant/providers.py`) with Anthropic and Gemini implementations, a scripted provider for
 tests, and a disabled provider when no credentials are configured or the organisation forbids
 external AI. It can act only through server-side tools (inspect the project, list models, check engine
 capabilities, find missing inputs, draft and validate scenarios, estimate resources, submit runs,

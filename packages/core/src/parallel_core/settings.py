@@ -56,9 +56,14 @@ class Settings(BaseSettings):
     org_monthly_run_quota: int = 5000
 
     # AI assistant (optional: every modelling and simulation workflow works without it)
-    assistant_provider: Literal["anthropic", "scripted", "disabled"] = "anthropic"
+    assistant_provider: Literal["anthropic", "gemini", "scripted", "disabled"] = "anthropic"
     anthropic_api_key: str | None = None
     assistant_model: str = "claude-opus-5-5"
+    # Gemini (Google AI Studio or any endpoint with the same REST interface). The model is set separately
+    # because model identifiers are not shared between providers; see docs/assistant-providers.md.
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-pro"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com"
     assistant_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     assistant_max_tool_rounds: int = 8
 

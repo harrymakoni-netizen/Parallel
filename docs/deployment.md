@@ -158,7 +158,7 @@ The ones that matter most in production:
 | `PARALLEL_ORG_CONCURRENT_RUN_LIMIT`, `PARALLEL_ORG_MONTHLY_RUN_QUOTA` | Per-organisation run limits (refused with 429) |
 | `PARALLEL_HEARTBEAT_TIMEOUT_S`, `PARALLEL_MAX_RUN_ATTEMPTS` | Recovery of runs whose worker stopped |
 | `PARALLEL_ENGINE_THREADS` | Threads each engine process may use |
-| `PARALLEL_ASSISTANT_PROVIDER`, `PARALLEL_ANTHROPIC_API_KEY` | The optional assistant; without a key it reports itself unavailable |
+| `PARALLEL_ASSISTANT_PROVIDER` (`anthropic`, `gemini`, `disabled`), `PARALLEL_ANTHROPIC_API_KEY`, `PARALLEL_GEMINI_API_KEY`, `PARALLEL_GEMINI_MODEL` | The optional assistant; without a key it reports itself unavailable. See [assistant providers](assistant-providers.md) |
 
 **Sign-in.** Local accounts (scrypt-hashed passwords, signed session tokens) are the supported mode.
 The API can also verify OIDC tokens against a provider's keys (`PARALLEL_AUTH_MODE=oidc` with issuer,

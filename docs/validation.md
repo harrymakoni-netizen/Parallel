@@ -92,8 +92,9 @@ the same frame graph, but no test aligns a georeferenced terrain raster with a m
 ### 30.4 AI
 
 The assistant is tested with a scripted provider (deterministic model turns) against the real API and
-tools, and the request sent to the Anthropic API is checked against its contract without network
-access. Tests cover: use of authorised project data only, schema-valid drafts that cannot run until
+tools, and the requests sent to the Anthropic and Gemini APIs are checked against their contracts without network
+access (the Gemini provider against a stub transport, including the conversion of every tool schema and the
+replay of stored turns). Tests cover: use of authorised project data only, schema-valid drafts that cannot run until
 adopted, missing inputs reported instead of invented, no invented metrics (results come from tool
 output), no claim that an unexecuted run happened, tool authorisation that cannot be bypassed,
 organisation policy for case records, observations kept distinct from interpretations, provider errors
