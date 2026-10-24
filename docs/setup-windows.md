@@ -255,11 +255,6 @@ Each time you restart the tunnel, repeat 7.1 and 7.2 with the new address.
 For a permanent address, create a free Cloudflare account and a named tunnel on a domain you own
 (Cloudflare's *Zero Trust* documentation covers it), or host Parallel on a cloud machine with a public
 name instead; see [google-cloud.md](google-cloud.md) and [deployment.md](deployment.md).
-
-*Optional: the browser application can also be hosted separately on Vercel, with `/api` forwarded to
-the tunnel address by the first rewrite in `apps/web/vercel.json`; see
-[deployment.md](deployment.md#browser-application-on-vercel). It is not needed for the steps above.*
-
 ## 8. Day-to-day use
 
 All commands are run from the `Parallel` folder.

@@ -98,11 +98,3 @@ Open `https://yourname.duckdns.org` and sign in. The Engines page shows each eng
 - Logs: `dc logs -f api` (or `sim`, `recon`, `results`, `caddy`).
 - Costs: stop the instance when unused; delete the static address if you remove the instance, as an
   unused reserved address is billed.
-
-## Using the Vercel site as well (optional)
-
-With HTTPS in place the application is already served from the instance. To keep the Vercel
-deployment, replace the first rewrite in `apps/web/vercel.json` with
-`{ "source": "/api/(.*)", "destination": "https://yourname.duckdns.org/api/$1" }`, push, and set the
-two URL settings above to the Vercel address instead. Large uploads are better made to the instance
-directly.
