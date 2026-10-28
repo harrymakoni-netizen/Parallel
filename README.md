@@ -91,9 +91,9 @@ S3 storage, single sign-on, backups and upgrades.
 ## Tests
 
 ```bash
-uv run pytest                              # 158 tests: real PostgreSQL, real engines, real reconstruction
+uv run pytest                              # 188 tests: real PostgreSQL, real engines, real reconstruction
 uv run ruff check .
-(cd apps/web && npm run typecheck && E2E_PASSWORD=... npm run e2e)   # 17 browser tests
+(cd apps/web && npm run typecheck && E2E_PASSWORD=... npm run e2e)   # 18 browser tests
 ```
 
 Engine tests run the pinned engines and fail, rather than skip, when a runtime is missing. What was
@@ -109,6 +109,7 @@ verified, how, and on which platform is in [docs/validation.md](docs/validation.
 | [Engine verification record](docs/engine-verification.md) | Every native cross-check with its tolerance and rationale, from real reference runs (generated) |
 | [Metric catalogue](docs/metrics.md) | Every metric's definition, calculation, sources and missing-value rule (generated) |
 | [HTTP API](docs/api.md) | Endpoints by area, with the [OpenAPI document](docs/api/openapi.json) (generated) |
+| [System specification](docs/system-specification.md) | The system as built: requirements, behaviour, architecture, verification and status in one document |
 | [Reconstruction](docs/reconstruction.md) | Capture guidance, the pipeline, setup and a worked example |
 | [Assistant providers](docs/assistant-providers.md) | Using Claude or Gemini for the optional assistant, and what each provider is sent |
 | [External training](docs/external-training.md) | Train a Gaussian splat on a free or rented GPU and import it, with capture sizing |

@@ -12,11 +12,11 @@ Python 3.13.16 (and Python 3.12 inside the worker image).
 ## Running the checks
 
 ```bash
-uv run pytest                                     # 158 tests
+uv run pytest                                     # 188 tests
 uv run ruff check .
 uv run python scripts/engine_verification.py      # cross-check record for every managed engine
 (cd apps/web && npm run typecheck && npm run build)
-(cd apps/web && E2E_PASSWORD=... npm run e2e)     # 17 browser tests, against a running stack with demos seeded
+(cd apps/web && E2E_PASSWORD=... npm run e2e)     # 18 browser tests, against a running stack with demos seeded
 ```
 
 Tests need PostgreSQL 16 with PostGIS (a `parallel_template` database holding only the extension) and
@@ -34,10 +34,10 @@ skip.
 | Metrics (`packages/metrics`) | 17 | Registry ids unique and documented; evacuation metrics including unattained T100; operations and collision metrics; time-series sampling; comparison rules for zero baselines and unavailable values |
 | Engines (`packages/engines`) | 36 | Real reference workflows for JuPedSim, SUMO, SWMM, EPANET, SimPy and OpenFOAM; OpenStudio model translation; file-exchange packaging and import for FDS, Ventsim, FLAC3D, 3DEC, HEC-RAS, Virtual CRASH and PC-Crash; safe archive extraction; every catalogue engine has an adapter and a complete capability record |
 | Core (`packages/core`) | 8 | Migrations equal the models and downgrade and upgrade cleanly; S3 storage against an S3 API emulator; restore filtering |
-| API (`services/api`) | 42 | Authentication, isolation and roles; uploads and signed URLs; revisions; run lifecycle with real engines; validation failures; honest refusals; file exchange; quotas; worker-reported availability; reconstruction; comparisons, reviews and reports; CrashLens; optimisation; the assistant; demonstrations; backup and restore; the admin command |
+| API (`services/api`) | 72 | Authentication, isolation and roles; uploads and signed URLs; revisions; run lifecycle with real engines; validation failures; honest refusals; file exchange; quotas; worker-reported availability; reconstruction; training packages and import of an externally trained splat (alignment check, refusals, provenance, access); comparisons, reviews and reports; CrashLens; optimisation; the assistant, including the Gemini provider's request contract against a stub transport; demonstrations; backup and restore; the admin command |
 | Simulation worker | 3 | Dispatch through the broker, cancellation that kills the engine process, recovery of a lost heartbeat until the retry budget is exhausted |
 | Results worker | 5 | Chart scales and labels, table twins, step-hold sampling, and that the packaged logo is byte-identical to the supplied file |
-| Browser (`apps/web/e2e`) | 17 | The workflow end to end in Chromium, access boundaries, and accessibility basics in both colour schemes |
+| Browser (`apps/web/e2e`) | 18 | The workflow end to end in Chromium, access boundaries, the external-training panel, and accessibility basics in both colour schemes |
 
 ## Engines
 
