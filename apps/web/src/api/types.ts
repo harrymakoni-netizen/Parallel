@@ -11,6 +11,12 @@ export interface User {
 export interface Me {
   user: User;
   organisations: { id: string; name: string; slug: string; role: string; settings?: Json }[];
+  /** True when open access is on and the request is the shared guest (no sign-in). */
+  guest?: boolean;
+}
+export interface AuthConfig {
+  mode: "local" | "oidc";
+  open_access: boolean;
 }
 export interface Organisation {
   id: string;

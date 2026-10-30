@@ -18,6 +18,7 @@ from parallel_core.storage import LocalStorage, StorageError, get_storage, verif
 
 from ..deps import DB, CurrentUser, Paging
 from ..errors import ApiError
+from ..open_access import guard_storage, upload_limit
 from ..schemas import AssetOut, CaptureBatchIn, CaptureBatchOut, PageOut, SignedUrlOut
 from ..services.inspect import RejectedUpload, inspect
 
@@ -57,9 +58,9 @@ def list_batches(project_id: str, user: CurrentUser, db: DB):
 
 
 @contextmanager
-def received_file(file: UploadFile) -> Iterator[Path]:
+def received_file(file: UploadFile, limit: int | None = None) -> Iterator[Path]:
     """Spool an upload to a temporary file, enforcing the upload size limit."""
-    limit = get_settings().max_upload_bytes
+    limit = limit or get_settings().max_upload_bytes
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td) / "upload"
         size = 0
@@ -82,6 +83,7 @@ def store_upload(
     batch_id: str | None,
     sensitivity: str = "normal",
     derived_from_id: str | None = None,
+    max_bytes: int | None = None,
 ) -> SourceAsset:
     """Verify, inspect, hash and store an uploaded file; returns the SourceAsset."""
     try:
@@ -95,7 +97,7 @@ def store_upload(
     key = f"projects/{project_id}/assets/{aid}/{safe}"
     storage = get_storage()
     with open(file_path, "rb") as fh:
-        size, sha = storage.put_stream(key, fh, "application/octet-stream", get_settings().max_upload_bytes)
+        size, sha = storage.put_stream(key, fh, "application/octet-stream", max_bytes or get_settings().max_upload_bytes)
     media = _media_type(safe)
     a = SourceAsset(
         id=aid,
@@ -137,7 +139,9 @@ def upload_asset(
         b = db.get(CaptureBatch, capture_batch_id)
         if b is None or b.project_id != project_id:
             raise ApiError(404, "not_found", "Capture batch not found")
-    with received_file(file) as tmp:
+    guard_storage(db, user)
+    limit = upload_limit(user)
+    with received_file(file, limit) as tmp:
         a = store_upload(
             db,
             project_id=project_id,
@@ -145,6 +149,7 @@ def upload_asset(
             file_path=tmp,
             filename=file.filename or "upload",
             batch_id=capture_batch_id,
+            max_bytes=limit,
         )
     audit(
         db,

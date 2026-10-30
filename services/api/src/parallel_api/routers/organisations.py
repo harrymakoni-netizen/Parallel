@@ -14,6 +14,7 @@ from parallel_engines.registry import get_adapter
 
 from ..deps import DB, CurrentUser
 from ..errors import ApiError
+from ..open_access import is_guest
 from ..schemas import MemberIn, MemberOut, OrganisationIn, OrganisationOut, OrgSettingsIn, UserOut
 
 router = APIRouter(prefix="/organisations", tags=["organisations"])
@@ -40,6 +41,8 @@ def list_orgs(user: CurrentUser, db: DB):
 
 @router.post("", response_model=OrganisationOut, status_code=201)
 def create_org(body: OrganisationIn, user: CurrentUser, db: DB):
+    if is_guest(user):
+        raise ApiError(403, "forbidden", "Sign in to create an organisation")
     if db.scalar(select(Organisation).where(Organisation.slug == body.slug)):
         raise ApiError(409, "slug_taken", "Organisation slug already in use")
     org = Organisation(name=body.name, slug=body.slug, settings=dict(DEFAULT_SETTINGS))

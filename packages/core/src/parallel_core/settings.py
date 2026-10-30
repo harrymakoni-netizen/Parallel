@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     oidc_audience: str | None = None
     oidc_jwks_url: str | None = None
     access_token_minutes: int = 12 * 60
+    # Open access: requests without a token are served as a limited guest in a shared sandbox organisation, so
+    # the site works with no sign-in (for demonstrations and review). Off by default; see docs/deployment.md.
+    open_access: bool = False
+    open_access_email: str = "guest@parallel-open.example"
+    open_access_max_upload_bytes: int = 300 * 1024**2
+    open_access_storage_cap_bytes: int = 5 * 1024**3
+    open_access_max_active_reconstructions: int = 2
 
     # Storage
     storage_backend: Literal["local", "s3"] = "local"

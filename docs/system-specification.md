@@ -121,11 +121,13 @@ These come from the development specification, are listed in `CLAUDE.md`, and ar
 | A-6 | Removing a member removes access | Verified |
 | A-7 | Downloads use short-lived signed URLs (HMAC for local storage, presigned for S3); a tampered signature is refused | Verified |
 | A-8 | Archived projects are inaccessible to ordinary use | Verified |
+| A-9 | In open access mode the guest is authorised like any user: member of a sandbox organisation only, no other organisation, no administration, no case access, no external AI, bounded uploads, storage and reconstructions | Verified |
 
 ### 2.3 Identity
 
 - **Local accounts** (`PARALLEL_AUTH_MODE=local`): email and password (scrypt hashes, 12-character minimum when created by the admin command), signed session tokens valid 12 hours by default. Verified.
 - **OIDC**: the API verifies tokens from an identity provider's published keys (`oidc`, issuer, audience, JWKS URL). **The browser sign-in flow, account linking and a test are not implemented.** In progress.
+- **Open access** (`PARALLEL_OPEN_ACCESS`, off by default): a request with no token is served as one shared guest user, a plain member of a sandbox organisation, so the site works with no sign-in. A token still means that token's user, and an invalid token is refused. See [deployment.md](deployment.md#open-access-no-sign-in). Verified.
 - Operator commands (`python -m parallel_api.admin`): `create-admin` (creates the user if absent and makes them administrator of a named organisation, creating it if absent) and `set-password`.
 
 ---
@@ -614,7 +616,7 @@ Every consequential change writes an audit event (`parallel_core.audit.record`).
 | Concern | Measure |
 | --- | --- |
 | Identity | scrypt password hashes; signed JWT sessions; OIDC token verification |
-| Authorisation | Section 2; checked on the server for every request |
+| Authorisation | Section 2; checked on the server for every request, including for the open-access guest (off by default) |
 | Audit | Actor, object, project and case on every consequential change |
 | Uploads | Size limits enforced while streaming; SHA-256 at receipt; content-signature checks; originals stored once |
 | Archives | Traversal, absolute-path, symlink, member-size, total-size and compression-ratio checks (total limit 8 GiB by default) |
@@ -731,10 +733,10 @@ One Google Cloud VM (`e2-standard-4`: 4 vCPU, 16 GB, no GPU; Ubuntu 24.04; 100 G
 | Metrics | 17 | Registry integrity; evacuation, operations and collision metrics; comparison rules |
 | Engines | 36 | Real reference workflows; file-exchange packaging and import; safe archive extraction; every engine has an adapter and complete capability record |
 | Core | 8 | Migrations equal the models; S3 storage against an emulator; restore filtering |
-| API | 72 | Authentication, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction; external training and splat import; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
+| API | 78 | Authentication, open access mode, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction; external training and splat import; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
 | Simulation worker | 3 | Dispatch, cancellation killing the engine, recovery of a lost heartbeat |
 | Results worker | 5 | Chart scales, table twins, logo byte-identity |
-| **Python total** | **188** | |
+| **Python total** | **194** | |
 | Browser (Playwright) | 18 | Workflow end to end, access boundaries, external-training panel, accessibility in both colour schemes; any console error fails the test |
 
 ### 16.3 Engine verification

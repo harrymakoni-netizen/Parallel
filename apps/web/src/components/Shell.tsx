@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { setToken } from "../api/client";
+import { useAuthConfig } from "../api/hooks";
 import type { Me } from "../api/types";
 
 const MeContext = createContext<Me | null>(null);
@@ -39,10 +40,12 @@ export function Shell({ me, children }: { me: Me; children: ReactNode }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [theme, setTheme] = useState(readTheme());
+  const config = useAuthConfig();
+  const open = !!config.data?.open_access;
   const signOut = () => {
     setToken(null);
     qc.clear();
-    nav("/login");
+    nav(open ? "/projects" : "/login");
   };
   const cycle = () => {
     const next = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
@@ -65,10 +68,18 @@ export function Shell({ me, children }: { me: Me; children: ReactNode }) {
           <button className="btn btn-ghost btn-small" onClick={cycle} aria-label={`Theme: ${theme}. Change theme`}>
             Theme: {theme}
           </button>
-          <span className="small" style={{ color: "#c5d2e6" }}>{me.user.display_name}</span>
-          <button className="btn btn-ghost btn-small" onClick={signOut}>Sign out</button>
+          <span className="small" style={{ color: "#c5d2e6" }}>{me.guest ? "Guest (no sign-in)" : me.user.display_name}</span>
+          {me.guest
+            ? <button className="btn btn-ghost btn-small" onClick={() => nav("/login")}>Sign in</button>
+            : <button className="btn btn-ghost btn-small" onClick={signOut}>Sign out</button>}
         </div>
       </header>
+      {me.guest && (
+        <div className="note" role="status" style={{ margin: "0", borderRadius: 0 }}>
+          <strong>Open access.</strong> No sign-in is needed for now. You are using a shared guest account, so what you create here is visible to
+          every visitor, and uploads and runs are limited. <a href="/login">Sign in</a> with an account for your own organisation's projects.
+        </div>
+      )}
       <main id="main" tabIndex={-1}>{children}</main>
     </MeContext.Provider>
   );

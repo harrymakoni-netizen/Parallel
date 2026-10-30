@@ -61,6 +61,12 @@ def sync_capabilities() -> None:
 async def lifespan(app: FastAPI):
     with contextlib.suppress(Exception):  # database not migrated yet; the health endpoint reports it
         sync_capabilities()
+    if get_settings().open_access:
+        with contextlib.suppress(Exception):
+            from .open_access import ensure_guest
+
+            with session_scope() as db:
+                ensure_guest(db)
     yield
 
 

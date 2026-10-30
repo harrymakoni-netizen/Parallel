@@ -23,6 +23,7 @@ from parallel_core.storage import get_storage
 
 from ..deps import DB, CurrentUser
 from ..errors import ApiError
+from ..open_access import guard_reconstructions
 
 router = APIRouter(tags=["reconstructions"])
 
@@ -83,6 +84,7 @@ def enqueue(db, job: ReconstructionJob) -> None:
 @router.post("/projects/{project_id}/reconstructions", status_code=201)
 def start(project_id: str, body: ReconstructionIn, user: CurrentUser, db: DB):
     require_project(db, user, project_id, Action.edit)
+    guard_reconstructions(db, user)
     batch = db.get(CaptureBatch, body.capture_batch_id)
     if batch is None or batch.project_id != project_id:
         raise ApiError(404, "not_found", "Capture batch not found")

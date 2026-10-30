@@ -5,7 +5,7 @@ import { api, setToken } from "../api/client";
 import { Logo } from "../components/Shell";
 import { ErrorNote, Field } from "../components/ui";
 
-export function Login() {
+export function Login({ open = false }: { open?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<unknown>(null);
@@ -42,6 +42,11 @@ export function Login() {
         </Field>
         <ErrorNote error={error} />
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        {open && (
+          <button className="btn" type="button" onClick={() => { setToken(null); qc.clear(); nav("/projects"); }}>
+            Continue without signing in
+          </button>
+        )}
       </form>
     </div>
   );

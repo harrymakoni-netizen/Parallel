@@ -36,7 +36,13 @@ DB = Annotated[Session, Depends(get_db, scope="function")]
 
 
 def current_user(db: DB, authorization: Annotated[str | None, Header()] = None) -> User:
-    if not authorization or not authorization.lower().startswith("bearer "):
+    if not authorization:
+        if get_settings().open_access:  # no token: the shared guest (a bad or stale token is still refused below)
+            from .open_access import guest_user
+
+            return guest_user(db)
+        raise ApiError(401, "unauthenticated", "Sign in required")
+    if not authorization.lower().startswith("bearer "):
         raise ApiError(401, "unauthenticated", "Sign in required")
     try:
         claims = decode_token(authorization.split(" ", 1)[1])

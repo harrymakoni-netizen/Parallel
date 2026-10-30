@@ -45,12 +45,14 @@ class UserOut(ORM):
 class MeOut(BaseModel):
     user: UserOut
     organisations: list[dict[str, Any]]
+    guest: bool = False
 
 
 class AuthConfigOut(BaseModel):
     mode: Literal["local", "oidc"]
     oidc_issuer: str | None = None
     oidc_audience: str | None = None
+    open_access: bool = False
 
 
 class OrganisationIn(BaseModel):

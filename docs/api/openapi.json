@@ -9104,6 +9104,11 @@
        }
       ],
       "title": "Oidc Audience"
+     },
+     "open_access": {
+      "type": "boolean",
+      "title": "Open Access",
+      "default": false
      }
     },
     "type": "object",
@@ -10425,6 +10430,11 @@
       },
       "type": "array",
       "title": "Organisations"
+     },
+     "guest": {
+      "type": "boolean",
+      "title": "Guest",
+      "default": false
      }
     },
     "type": "object",

@@ -140,6 +140,7 @@ The ones that matter most in production:
 | `PARALLEL_ORG_CONCURRENT_RUN_LIMIT`, `PARALLEL_ORG_MONTHLY_RUN_QUOTA` | Per-organisation run limits (refused with 429) |
 | `PARALLEL_HEARTBEAT_TIMEOUT_S`, `PARALLEL_MAX_RUN_ATTEMPTS` | Recovery of runs whose worker stopped |
 | `PARALLEL_ENGINE_THREADS` | Threads each engine process may use |
+| `PARALLEL_OPEN_ACCESS` (and its `_MAX_UPLOAD_BYTES`, `_STORAGE_CAP_BYTES`, `_MAX_ACTIVE_RECONSTRUCTIONS` limits) | Off by default. When true, no sign-in is needed: requests without a token are served as a limited shared guest ([open access](#open-access-no-sign-in)) |
 | `PARALLEL_ASSISTANT_PROVIDER` (`anthropic`, `gemini`, `disabled`), `PARALLEL_ANTHROPIC_API_KEY`, `PARALLEL_GEMINI_API_KEY`, `PARALLEL_GEMINI_MODEL` | The optional assistant; without a key it reports itself unavailable. See [assistant providers](assistant-providers.md) |
 
 **Sign-in.** Local accounts (scrypt-hashed passwords, signed session tokens) are the supported mode.
@@ -201,6 +202,37 @@ Runs in progress when a worker restarts are re-queued by the recovery sweep whil
 - **Run records:** queue, start and finish times, attempts, worker, engine and adapter versions,
   per-state durations and output sizes are on every run; reconstruction jobs record per-stage timings.
 - **Demonstrations:** `python -m parallel_api.demo status|reset`.
+
+## Open access (no sign-in)
+
+For a demonstration or a review you may want visitors to use Parallel with **no sign-in**. Set `PARALLEL_OPEN_ACCESS=true` in
+`.env` and run `docker compose up -d`. It is **off by default**.
+
+A request that carries no token is then served as one shared guest. The guest is an ordinary user, so every authorisation rule
+still applies to it:
+
+- it belongs only to a sandbox organisation called *Open access* (created automatically), as a plain **member**: it can create
+  projects there, upload files, reconstruct, simulate and compare, but cannot change organisation settings, add members or
+  create organisations;
+- it **cannot see or reach any other organisation**, including your real projects, and it has no CrashLens case access
+  (cases need explicit assignment);
+- the sandbox has external AI switched off, so visitors cannot spend an assistant API key;
+- uploads are limited to 300 MiB a file and 5 GiB in total for the sandbox, and at most two reconstructions may be queued or
+  running from open access at once (settings in `.env.example`); the usual organisation run quotas also apply;
+- everything in the sandbox is **shared and visible to every visitor**.
+
+The web application skips the sign-in page, shows a banner and a **Sign in** button; people with accounts sign in as usual and
+see their own organisations, and signing out returns to the guest. A stale or invalid token is refused and the page falls
+back to the guest.
+
+To let visitors see the five demonstrations (read-only), run `docker compose run --rm -e PARALLEL_DEMO_PASSWORD='...' sim
+python -m parallel_api.demo seed` after switching the mode on; it is safe to run again and also grants the guest read-only
+access to demonstrations that already exist.
+
+**Risks.** Anyone who can reach the address can use the site: there is no rate limiting beyond the limits above, so a determined
+visitor can fill the sandbox, queue runs and use CPU. Do not put real, confidential or case data in the sandbox. Switch the mode
+off (set it to `false` and run `docker compose up -d`) as soon as it is not needed; the guest's data stays in the database until
+you remove it.
 
 ## Security checklist
 

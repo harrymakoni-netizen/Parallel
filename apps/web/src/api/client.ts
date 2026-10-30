@@ -41,6 +41,12 @@ function headers(extra?: HeadersInit): Headers {
   return h;
 }
 
+/** Authorization header for a direct fetch: none when signed out (open access serves the guest). */
+export function authHeaders(): Record<string, string> {
+  const t = sessionToken ?? getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 async function parse(res: Response): Promise<unknown> {
   if (res.status === 204) return null;
   const type = res.headers.get("content-type") ?? "";

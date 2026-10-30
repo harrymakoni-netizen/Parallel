@@ -32,6 +32,7 @@ from parallel_scene import splat as splat_check
 
 from ..deps import DB, CurrentUser
 from ..errors import ApiError
+from ..open_access import guard_storage, upload_limit
 from ..schemas import AssetOut
 from .assets import received_file, store_upload
 from .reconstructions import _job
@@ -221,7 +222,9 @@ def import_splat(job_id: str, user: CurrentUser, db: DB, splat: UploadFile = Fil
                         .order_by(SourceAsset.created_at.desc()))
     info = _read_info(training_info, job, package)
     sparse = _sparse_points(job)
-    with received_file(splat) as tmp:
+    guard_storage(db, user)
+    limit = upload_limit(user)
+    with received_file(splat, limit) as tmp:
         try:
             summary, xyz = splat_check.validate(tmp)
             check = splat_check.alignment_check(xyz, sparse)
@@ -240,7 +243,8 @@ def import_splat(job_id: str, user: CurrentUser, db: DB, splat: UploadFile = Fil
         if have:
             raise ApiError(409, "already_imported", "This exact splat file is already part of the scene")
         asset = store_upload(db, project_id=job.project_id, user_id=user.id, file_path=tmp, filename=filename,
-                             batch_id=job.capture_batch_id, derived_from_id=package.id if package else None)
+                             batch_id=job.capture_batch_id, derived_from_id=package.id if package else None,
+                             max_bytes=limit)
     trainer = info.get("trainer") or "a Gaussian splat trainer (not stated)"
     gpu = info.get("gpu")
     its = info.get("iterations")

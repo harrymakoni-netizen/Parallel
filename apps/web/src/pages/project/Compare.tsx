@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, getToken } from "../../api/client";
+import { api, authHeaders } from "../../api/client";
 import { useComparisons, useMetricDefs, useRuns, useScenarios } from "../../api/hooks";
 import type { Comparison, Report, Run } from "../../api/types";
 import { RunCharts } from "../../components/results";
@@ -95,7 +95,7 @@ function ComparisonView({ c }: { c: Comparison }) {
     onSuccess: () => nav(`/p/${pid}/reports`),
   });
   const csv = async () => {
-    const res = await fetch(`/api/v1/comparisons/${c.id}/csv`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const res = await fetch(`/api/v1/comparisons/${c.id}/csv`, { headers: authHeaders() });
     const url = URL.createObjectURL(await res.blob());
     const a = document.createElement("a");
     a.href = url;

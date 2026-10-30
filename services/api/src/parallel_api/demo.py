@@ -1331,6 +1331,45 @@ def reset() -> dict[str, int]:
 
 
 # ---------------------------------------------------------------- seed / status / CLI
+def grant_guest_access() -> int:
+    """With open access on, give the guest read-only access to the demonstration projects (idempotent).
+
+    The guest joins the demonstration organisation as a plain member and is a project viewer on each
+    demonstration project; it is assigned to no case, so CrashLens case records stay hidden.
+    """
+    from sqlalchemy import select
+
+    from parallel_api.open_access import ensure_guest
+    from parallel_core.db import session_scope
+    from parallel_core.models import Organisation, OrganisationMembership, Project, ProjectMembership
+    from parallel_core.settings import get_settings
+
+    if not get_settings().open_access:
+        return 0
+    with session_scope() as db:
+        org = db.scalar(select(Organisation).where(Organisation.slug == DEMO_ORG_SLUG))
+        if org is None:
+            return 0
+        guest = ensure_guest(db)
+        if not db.scalar(
+            select(OrganisationMembership.id).where(
+                OrganisationMembership.user_id == guest.id, OrganisationMembership.organisation_id == org.id
+            )
+        ):
+            db.add(OrganisationMembership(organisation_id=org.id, user_id=guest.id, role="member"))
+        granted = 0
+        for p in db.scalars(select(Project).where(Project.organisation_id == org.id, Project.demo_key.is_not(None))):
+            m = db.scalar(
+                select(ProjectMembership).where(ProjectMembership.project_id == p.id, ProjectMembership.user_id == guest.id)
+            )
+            if m is None:
+                db.add(ProjectMembership(project_id=p.id, user_id=guest.id, role="viewer"))
+            elif m.role != "viewer":
+                m.role = "viewer"
+            granted += 1
+        return granted
+
+
 def seed(only: list[str] | None = None) -> dict[str, Any]:
     from fastapi.testclient import TestClient
     from sqlalchemy import select
@@ -1361,6 +1400,9 @@ def seed(only: list[str] | None = None) -> dict[str, Any]:
                 results[key] = {"error": str(e)}
                 log.error("demo %s failed: %s", key, e)
             print(f"{key}: {results[key]}")
+    granted = grant_guest_access()
+    if granted:
+        print(f"open access is on: the guest can view {granted} demonstration projects (read-only)")
     return results
 
 

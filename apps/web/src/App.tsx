@@ -2,7 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { getToken, setToken } from "./api/client";
-import { useMe } from "./api/hooks";
+import { useAuthConfig, useMe } from "./api/hooks";
+import type { AuthConfig } from "./api/types";
 import { Shell } from "./components/Shell";
 import { Loading } from "./components/ui";
 import { AllReports } from "./pages/AllReports";
@@ -19,22 +20,30 @@ export default function App() {
   const loc = useLocation();
   const qc = useQueryClient();
   const onLogin = loc.pathname === "/login";
-  const me = useMe(!onLogin && !!getToken());
+  const config = useAuthConfig();
+  const open = !!config.data?.open_access; // open access: no sign-in needed, the server serves a shared guest
+  const me = useMe(!onLogin && config.isFetched && (!!getToken() || open));
   useEffect(() => {
     const onUnauth = () => {
       if (window.location.pathname === "/login") return;
       setToken(null);
-      qc.removeQueries();
-      nav("/login", { replace: true, state: { from: loc.pathname } });
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "auth-config" });
+      // read the setting now: this handler can be registered before the configuration has loaded
+      const isOpen = !!qc.getQueryData<AuthConfig>(["auth-config"])?.open_access;
+      nav(isOpen ? "/projects" : "/login", { replace: true, state: { from: loc.pathname } });
     };
     window.addEventListener("parallel:unauthorised", onUnauth);
     return () => window.removeEventListener("parallel:unauthorised", onUnauth);
   }, [nav, loc.pathname, qc]);
 
-  if (onLogin) return <Login />;
-  if (!getToken()) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
-  if (me.isLoading) return <div className="page"><Loading label="Signing in" /></div>;
-  if (me.isError || !me.data) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  if (config.isLoading) return <div className="page"><Loading label="Starting" /></div>;
+  if (onLogin) return <Login open={open} />;
+  if (!getToken() && !open) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  if (me.isLoading) return <div className="page"><Loading label={open && !getToken() ? "Opening Parallel" : "Signing in"} /></div>;
+  if (me.isError || !me.data) {
+    if (open) return <div className="page"><p role="alert">Parallel could not be reached. Reload the page, or <a href="/login">sign in</a>.</p></div>;
+    return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  }
   return (
     <Shell me={me.data}>
       <Routes>

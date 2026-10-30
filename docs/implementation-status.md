@@ -57,8 +57,9 @@ Updated 2026-10-28 on branch `claude/gracious-allen-6xoln9`.
 | 28.3 | Deployment | Implemented and verified (single host); GPU and hosted awaiting environment | Container images and compose verified end to end; S3 storage tested against an emulator only |
 | 28.4 | Observability | In progress | Done: job and queue times, failures, engine versions, reconstruction stage timings, output sizes, AI usage. Missing: worker resource use (CPU and memory per run) |
 | 28.5 | Cost controls | In progress | Done: per-run estimates, job size and upload limits, organisation concurrency limits and monthly quotas, optimisation budgets. Missing: GPU time tracking and storage use per organisation |
-| 30 | Testing and acceptance | Implemented and verified | 188 automated tests, 18 browser tests, engine verification record, benchmarks |
+| 30 | Testing and acceptance | Implemented and verified | 194 automated tests, 18 browser tests, engine verification record, benchmarks |
 | 31 | Demonstration package | Implemented and verified | Five projects from real recorded runs, labelled saved results, presenter notes, safe reset |
+| — | Open access (no sign-in) mode | Implemented and verified | Off by default (`PARALLEL_OPEN_ACCESS`). Requests without a token are served as a shared guest in a sandbox organisation: plain member, no other organisation, no case access, no AI, bounded uploads and reconstructions; the web app skips sign-in and keeps a Sign in button. See [deployment](deployment.md#open-access-no-sign-in) |
 | — | Sign-in with an organisation's identity provider (OIDC) | In progress | The API verifies OIDC tokens against the provider's keys; there is no browser sign-in flow, no account linking and no test |
 
 ## Engines
@@ -113,7 +114,7 @@ records are in the [engine verification record](engine-verification.md).
 | 9 | Reconstruction setup and example | [reconstruction.md](reconstruction.md) |
 | 10 | Model and scenario schemas | `packages/contracts`, `/api/v1/models/schemas`, [data contracts](data-contracts.md) |
 | 11 | Result normalisation documentation | [data contracts](data-contracts.md#normalisation), [metric catalogue](metrics.md) |
-| 12 | Automated tests | 188 Python tests, 18 browser tests ([validation](validation.md)) |
+| 12 | Automated tests | 194 Python tests, 18 browser tests ([validation](validation.md)) |
 | 13 | Benchmark results | [benchmarks.md](benchmarks.md) |
 | 14 | Deployment instructions | [deployment.md](deployment.md), `compose.yaml`, `infra/docker` |
 | 15 | Report templates | `workers/results` ([data contracts](data-contracts.md#reports)) |

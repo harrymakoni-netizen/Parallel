@@ -9,6 +9,7 @@ from parallel_core.settings import get_settings
 
 from ..deps import DB, CurrentUser
 from ..errors import ApiError
+from ..open_access import is_guest
 from ..schemas import AuthConfigOut, LoginIn, MeOut, TokenOut, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -17,7 +18,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.get("/config", response_model=AuthConfigOut)
 def auth_config() -> AuthConfigOut:
     s = get_settings()
-    return AuthConfigOut(mode=s.auth_mode, oidc_issuer=s.oidc_issuer, oidc_audience=s.oidc_audience)
+    return AuthConfigOut(
+        mode=s.auth_mode, oidc_issuer=s.oidc_issuer, oidc_audience=s.oidc_audience, open_access=s.open_access
+    )
 
 
 @router.post("/login", response_model=TokenOut)
@@ -41,4 +44,5 @@ def me(user: CurrentUser, db: DB) -> MeOut:
     return MeOut(
         user=UserOut.model_validate(user),
         organisations=[{"id": o.id, "name": o.name, "slug": o.slug, "role": r} for o, r in rows],
+        guest=is_guest(user),
     )

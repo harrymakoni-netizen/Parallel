@@ -2,11 +2,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
-  Activity, Artifact, Asset, CaptureBatch, Case, Comparison, DomainModel, EngineEntry, Evidence, Hypothesis, Me, Metric,
+  Activity, Artifact, Asset, AuthConfig, CaptureBatch, Case, Comparison, DomainModel, EngineEntry, Evidence, Hypothesis, Me, Metric,
   MetricDef, ModelRevision, Observation, Optimisation, Overview, Page, Project, ReconJob, Report, Run, Scenario,
   ScenarioRevision, SceneRevision, TimelineEvent, Vehicle,
 } from "./types";
 
+export const useAuthConfig = () => useQuery({ queryKey: ["auth-config"], staleTime: Infinity, retry: false, queryFn: () => api.get<AuthConfig>("/auth/config") });
 export const useMe = (enabled = true) => useQuery({ queryKey: ["me"], enabled, queryFn: () => api.get<Me>("/auth/me"), retry: false });
 export const useProjects = () => useQuery({ queryKey: ["projects"], queryFn: () => api.get<Page<Project>>("/projects?limit=200") });
 export const useOverview = (pid: string) => useQuery({ queryKey: ["overview", pid], queryFn: () => api.get<Overview>(`/projects/${pid}/overview`) });
