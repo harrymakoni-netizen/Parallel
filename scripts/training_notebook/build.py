@@ -102,6 +102,9 @@ KEEP_VIEW_DEPENDENT_COLOUR = False  # True makes the file about 5 times larger f
         code("""
 # 6. Train. The orientation, centring and scale options keep the splat in the reconstruction's own frame.
 import datetime, time
+# Recent PyTorch refuses to load nerfstudio's own checkpoints by default ("weights only" loading), which would stop
+# the export in step 7. The checkpoint is the one this notebook just trained, so loading it in full is safe.
+os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
 # nerfstudio wants the shrunken frames prepared in advance; otherwise it stops to ask a question nobody can answer here
 print("Prepared", make_downscaled_images(ROOT, DOWNSCALE), "downscaled frames")
 STARTED = datetime.datetime.now(datetime.timezone.utc).isoformat()
