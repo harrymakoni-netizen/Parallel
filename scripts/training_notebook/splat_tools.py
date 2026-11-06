@@ -27,6 +27,32 @@ def sha256_file(path) -> str:
     return h.hexdigest()
 
 
+def make_downscaled_images(root, factor: int) -> int:
+    """Write images_<factor>/ next to images/, each frame shrunk by an integer factor (floor rounding).
+
+    nerfstudio's COLMAP data parser reads downscaled frames from that folder. When it is missing it stops to ask
+    a yes/no question on the terminal, which nobody can answer inside a notebook, so the training exits.
+    Floor rounding matches the camera sizes nerfstudio computes for the same factor. Returns the frames written.
+    """
+    from PIL import Image
+
+    root = Path(root)
+    if factor <= 1:
+        return 0
+    src, dst = root / "images", root / f"images_{factor}"
+    dst.mkdir(exist_ok=True)
+    written = 0
+    for f in sorted(p for p in src.iterdir() if p.is_file()):
+        out = dst / f.name
+        if out.exists():
+            continue
+        with Image.open(f) as im:
+            w, h = im.size
+            im.resize((max(1, w // factor), max(1, h // factor)), Image.LANCZOS).save(out)
+        written += 1
+    return written
+
+
 def verify_package(root) -> dict:
     """Check every file of an unzipped training package against its manifest. Returns the manifest."""
     root = Path(root)

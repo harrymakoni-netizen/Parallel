@@ -733,10 +733,10 @@ One Google Cloud VM (`e2-standard-4`: 4 vCPU, 16 GB, no GPU; Ubuntu 24.04; 100 G
 | Metrics | 17 | Registry integrity; evacuation, operations and collision metrics; comparison rules |
 | Engines | 36 | Real reference workflows; file-exchange packaging and import; safe archive extraction; every engine has an adapter and complete capability record |
 | Core | 8 | Migrations equal the models; S3 storage against an emulator; restore filtering |
-| API | 78 | Authentication, open access mode, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction; external training and splat import; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
+| API | 79 | Authentication, open access mode, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction; external training and splat import; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
 | Simulation worker | 3 | Dispatch, cancellation killing the engine, recovery of a lost heartbeat |
 | Results worker | 5 | Chart scales, table twins, logo byte-identity |
-| **Python total** | **194** | |
+| **Python total** | **195** | |
 | Browser (Playwright) | 18 | Workflow end to end, access boundaries, external-training panel, accessibility in both colour schemes; any console error fails the test |
 
 ### 16.3 Engine verification

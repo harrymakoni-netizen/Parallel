@@ -323,3 +323,22 @@ def test_notebook_detects_a_tampered_package(tmp_path, client, world, reconstruc
     victim.write_bytes(victim.read_bytes() + b"x")
     with pytest.raises(ValueError, match="missing or changed"):
         tools.verify_package(tmp_path)
+
+
+def test_notebook_prepares_downscaled_frames_so_nerfstudio_never_stops_to_ask(tmp_path):
+    """nerfstudio's COLMAP parser exits when images_<factor>/ is missing (it asks on the terminal), so the
+    notebook writes it first, with the floor-rounded sizes nerfstudio expects, and leaves factor 1 alone."""
+    from PIL import Image
+
+    (tmp_path / "images").mkdir()
+    for name, size in (("a.jpg", (1921, 1081)), ("b.png", (640, 480))):
+        Image.new("RGB", size, (120, 80, 40)).save(tmp_path / "images" / name)
+    assert tools.make_downscaled_images(tmp_path, 1) == 0 and not (tmp_path / "images_1").exists()
+    assert tools.make_downscaled_images(tmp_path, 2) == 2
+    with Image.open(tmp_path / "images_2" / "a.jpg") as im:
+        assert im.size == (960, 540)  # floor(1921 / 2), floor(1081 / 2)
+    with Image.open(tmp_path / "images_2" / "b.png") as im:
+        assert im.size == (320, 240)
+    assert tools.make_downscaled_images(tmp_path, 2) == 0  # idempotent
+    notebook = (REPO / "services/api/src/parallel_api/resources/parallel_splat_training.ipynb").read_text()
+    assert "make_downscaled_images(ROOT, DOWNSCALE)" in notebook

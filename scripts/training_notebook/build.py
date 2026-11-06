@@ -102,6 +102,8 @@ KEEP_VIEW_DEPENDENT_COLOUR = False  # True makes the file about 5 times larger f
         code("""
 # 6. Train. The orientation, centring and scale options keep the splat in the reconstruction's own frame.
 import datetime, time
+# nerfstudio wants the shrunken frames prepared in advance; otherwise it stops to ask a question nobody can answer here
+print("Prepared", make_downscaled_images(ROOT, DOWNSCALE), "downscaled frames")
 STARTED = datetime.datetime.now(datetime.timezone.utc).isoformat()
 t0 = time.time()
 CMD = [
