@@ -7,7 +7,11 @@ import type {
   ScenarioRevision, SceneRevision, TimelineEvent, Vehicle,
 } from "./types";
 
-export const useAuthConfig = () => useQuery({ queryKey: ["auth-config"], staleTime: Infinity, retry: false, queryFn: () => api.get<AuthConfig>("/auth/config") });
+// Retried: right after a restart the API may not answer yet, and one failure would hide open access until a reload.
+export const useAuthConfig = () => useQuery({
+  queryKey: ["auth-config"], staleTime: Infinity, retry: 5, retryDelay: (n) => Math.min(1000 * 2 ** n, 8000),
+  queryFn: () => api.get<AuthConfig>("/auth/config"),
+});
 export const useMe = (enabled = true) => useQuery({ queryKey: ["me"], enabled, queryFn: () => api.get<Me>("/auth/me"), retry: false });
 export const useProjects = () => useQuery({ queryKey: ["projects"], queryFn: () => api.get<Page<Project>>("/projects?limit=200") });
 export const useOverview = (pid: string) => useQuery({ queryKey: ["overview", pid], queryFn: () => api.get<Overview>(`/projects/${pid}/overview`) });
