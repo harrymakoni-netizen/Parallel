@@ -46,8 +46,8 @@ nerfstudio's *Splatfacto* (the trainer Parallel's own GPU worker uses), and prep
 **Runtime:** Runtime, Change runtime type, choose a **GPU** (T4 is enough).
 
 **Rough time on a free T4 (an estimate, not a measurement):** a package of 150 to 240 frames trains for
-15,000 iterations in about 25 to 45 minutes, plus 5 to 10 minutes of set-up the first time (nerfstudio
-compiles its CUDA kernels). A free session can be cut off, so keep the page open and download the result
+15,000 iterations in about 25 to 45 minutes, plus a one-off 15 to 30 minutes the first time while gsplat
+compiles its GPU code, one file at a time so the free machine does not run out of memory. A free session can be cut off, so keep the page open and download the result
 as soon as it is ready.
 
 **What this notebook will not do:** it does not change the reconstruction's scale or orientation, and it
@@ -105,6 +105,9 @@ import datetime, time
 # Recent PyTorch refuses to load nerfstudio's own checkpoints by default ("weights only" loading), which would stop
 # the export in step 7. The checkpoint is the one this notebook just trained, so loading it in full is safe.
 os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+# The first run compiles gsplat's GPU code. Compiling several files at once runs a free Colab machine out of memory
+# (the compiler is "Killed"), so compile one at a time: slower, but it happens once per session.
+os.environ["MAX_JOBS"] = "1"
 # nerfstudio wants the shrunken frames prepared in advance; otherwise it stops to ask a question nobody can answer here
 print("Prepared", make_downscaled_images(ROOT, DOWNSCALE), "downscaled frames")
 STARTED = datetime.datetime.now(datetime.timezone.utc).isoformat()

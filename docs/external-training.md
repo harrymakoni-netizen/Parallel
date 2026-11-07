@@ -58,8 +58,10 @@ uses the default budget in full**. Longer captures lose detail unless you lower 
 | Urban Drainage (a manhole, channel or outfall) | A close, slow pass | 1 to 2 minutes per feature | Captured surfaces are not hidden infrastructure: invert levels and pipe sizes still need to be supplied |
 
 **Training time on a free T4 (an estimate, not a measurement):** 150 to 240 frames at 15,000 iterations and a
-downscale factor of 2 should take roughly 25 to 45 minutes, plus 5 to 10 minutes of set-up the first time while
-nerfstudio compiles its CUDA kernels. Raise the iterations to 30,000 for more detail if the session allows.
+downscale factor of 2 should take roughly 25 to 45 minutes, plus a one-off 15 to 30 minutes in each new session
+while gsplat compiles its GPU code. The notebook compiles one file at a time (`MAX_JOBS=1`): on a free Colab machine,
+compiling several at once ran out of memory and the compiler was killed, which was seen on Python 3.13 with torch 2.14
+and CUDA 13. Raise the iterations to 30,000 for more detail if the session allows.
 Free sessions can end without warning, so download the result as soon as the notebook produces it.
 
 ## Free and cheap GPUs
