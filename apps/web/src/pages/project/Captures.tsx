@@ -256,7 +256,7 @@ function ExternalTraining({ job }: { job: ReconJob }) {
       </div>
       <ErrorNote error={send.error} />
       {check?.median_distance_fraction_of_spread !== undefined && (
-        <div className="muted small">Measured: median distance from the reconstruction's points to the nearest Gaussian was {(check.median_distance_fraction_of_spread * 100).toFixed(1)}% of the scene's spread (limit 5%); size ratio {check.spread_ratio_splat_to_sparse} (allowed 0.5 to 2).</div>
+        <div className="muted small">Measured: median distance from the reconstruction's points to the nearest Gaussian was {(check.median_distance_fraction_of_spread * 100).toFixed(1)}% of the scene's spread (limit 5%); size ratio {check.spread_ratio_splat_to_sparse} (at least 0.5).</div>
       )}
       {send.data && (
         <div className="note" role="status">

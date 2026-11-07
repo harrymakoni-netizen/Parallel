@@ -99,15 +99,20 @@ def alignment_check(
     sfm_xyz: np.ndarray,
     *,
     max_relative_distance: float = 0.05,
-    spread_ratio_range: tuple[float, float] = (0.5, 2.0),
+    min_spread_ratio: float = 0.5,
     sample: int = 20_000,
 ) -> dict:
     """Compare a splat with the sparse points of the reconstruction, in the capture frame.
 
     Trained Gaussians cluster on the surfaces the sparse points were triangulated on, so the median
     distance from a sparse point to its nearest Gaussian centre must be small relative to the extent of
-    the scene, and the two clouds must have a similar robust spread. Both statistics use medians so that
-    floaters and background Gaussians do not dominate.
+    the scene, and the splat must not be much smaller than the sparse points. Both statistics use medians so
+    that floaters do not dominate.
+
+    The spread check is one-sided on purpose. Training grows Gaussians into background and sky that the sparse
+    points never reached, so a correctly placed splat is often two or more times wider than the sparse cloud
+    (seen on a real capture with few sparse points: ratio 2.31 with a median distance of 0.63%). A re-scaled or
+    moved splat is caught by the distance, because the sparse points then no longer sit on its surfaces.
     """
     from scipy.spatial import cKDTree
 
@@ -127,8 +132,7 @@ def alignment_check(
     dist, _ = cKDTree(splat).query(sfm)
     median_rel = float(np.median(dist)) / sfm_spread
     ratio = splat_spread / sfm_spread
-    lo, hi = spread_ratio_range
-    ok = median_rel <= max_relative_distance and lo <= ratio <= hi
+    ok = median_rel <= max_relative_distance and ratio >= min_spread_ratio
     return {
         "passed": bool(ok),
         "median_distance_fraction_of_spread": round(median_rel, 5),
@@ -137,5 +141,5 @@ def alignment_check(
         "scene_spread_capture_units": round(sfm_spread, 5),
         "sparse_points_compared": int(len(sfm)),
         "gaussians_compared": int(len(splat)),
-        "limits": {"max_median_distance_fraction": max_relative_distance, "spread_ratio_range": [lo, hi]},
+        "limits": {"max_median_distance_fraction": max_relative_distance, "min_spread_ratio": min_spread_ratio},
     }

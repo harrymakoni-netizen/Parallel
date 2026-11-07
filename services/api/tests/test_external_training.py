@@ -195,6 +195,22 @@ def test_misaligned_splats_are_refused_with_the_measurements(client, world, reco
         assert "unchanged training package" in err["message"]
 
 
+def test_a_splat_wider_than_the_sparse_points_is_accepted(reconstruction):
+    """Trained splats reach background the sparse points missed; that alone must not fail the check."""
+    from parallel_scene import splat as server
+
+    sfm = _sparse(reconstruction["job"])
+    rng = np.random.default_rng(9)
+    spread = np.median(np.linalg.norm(sfm - np.median(sfm, axis=0), axis=1))
+    on_surfaces = sfm[rng.integers(0, len(sfm), 8000)] + rng.normal(0, 0.002 * spread, (8000, 3))
+    direction = rng.normal(size=(12000, 3))
+    direction /= np.linalg.norm(direction, axis=1, keepdims=True)
+    background = np.median(sfm, axis=0) + direction * rng.uniform(3, 8, (12000, 1)) * spread
+    xyz = np.vstack([on_surfaces, background])
+    for check in (server.alignment_check(xyz, sfm), tools.alignment_check(xyz, sfm)):
+        assert check["spread_ratio_splat_to_sparse"] > 2 and check["passed"], check
+
+
 def test_malformed_splats_are_refused(client, world, reconstruction):
     ed, job = world["editor"].h, reconstruction["job"]
     good = _splat(_sparse(job), seed=21, n=5000)

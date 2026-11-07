@@ -228,8 +228,12 @@ def to_capture_frame(data: np.ndarray, R: np.ndarray, t: np.ndarray, s: float) -
 
 
 def alignment_check(splat_xyz: np.ndarray, sfm_xyz: np.ndarray, max_relative_distance: float = 0.05,
-                    spread_ratio_range: tuple[float, float] = (0.5, 2.0), sample: int = 20_000) -> dict:
-    """The same statistics Parallel applies on import (see parallel_scene.splat.alignment_check)."""
+                    min_spread_ratio: float = 0.5, sample: int = 20_000) -> dict:
+    """The same statistics Parallel applies on import (see parallel_scene.splat.alignment_check).
+
+    A splat is usually wider than the sparse points (it reaches background they missed), so only a splat much
+    smaller than them is refused on size; a moved or re-scaled one fails the distance test.
+    """
     from scipy.spatial import cKDTree
 
     rng = np.random.default_rng(0)
@@ -244,6 +248,6 @@ def alignment_check(splat_xyz: np.ndarray, sfm_xyz: np.ndarray, max_relative_dis
     dist, _ = cKDTree(splat).query(sfm)
     median_rel = float(np.median(dist)) / sfm_spread
     ratio = splat_spread / sfm_spread
-    ok = median_rel <= max_relative_distance and spread_ratio_range[0] <= ratio <= spread_ratio_range[1]
+    ok = median_rel <= max_relative_distance and ratio >= min_spread_ratio
     return {"passed": bool(ok), "median_distance_fraction_of_spread": round(median_rel, 5),
             "spread_ratio_splat_to_sparse": round(ratio, 4)}
