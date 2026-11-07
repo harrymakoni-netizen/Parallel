@@ -1,4 +1,4 @@
-# Rendered by the nginx image's envsubst step (PARALLEL_API_UPSTREAM).
+# Rendered by the nginx image's envsubst step (PARALLEL_API_UPSTREAM, PARALLEL_DNS_RESOLVER).
 # Security headers are included per location: nginx drops server-level add_header directives in any
 # location that sets its own headers.
 server {
@@ -10,9 +10,14 @@ server {
     # uploads are size-checked by the API; this only has to allow them through
     client_max_body_size 8g;
 
+    # Look the API up again as it changes: recreating the api container gives it a new address, and a name
+    # resolved once at start-up left this proxy answering 502 until the web container was restarted too.
+    resolver ${PARALLEL_DNS_RESOLVER} valid=10s ipv6=off;
+    set $api_upstream ${PARALLEL_API_UPSTREAM};
+
     location /api/ {
         include /etc/nginx/snippets/security-headers.conf;
-        proxy_pass http://${PARALLEL_API_UPSTREAM};
+        proxy_pass http://$api_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

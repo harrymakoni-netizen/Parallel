@@ -21,4 +21,6 @@ COPY infra/docker/web/security-headers.conf /etc/nginx/snippets/security-headers
 COPY --from=build /web/dist /usr/share/nginx/html
 # The API address inside the deployment network
 ENV PARALLEL_API_UPSTREAM=api:8000
+# Docker's embedded DNS server; set another resolver where the image runs outside Docker networking
+ENV PARALLEL_DNS_RESOLVER=127.0.0.11
 EXPOSE 8080
