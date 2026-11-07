@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     open_access_max_upload_bytes: int = 300 * 1024**2
     open_access_storage_cap_bytes: int = 5 * 1024**3
     open_access_max_active_reconstructions: int = 2
+    # Access codes that let a training notebook on a borrowed GPU fetch one job's training package and send
+    # its splat back, without the person's sign-in token leaving Parallel
+    training_code_hours: int = 24
 
     # Storage
     storage_backend: Literal["local", "s3"] = "local"

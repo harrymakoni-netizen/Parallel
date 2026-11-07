@@ -217,11 +217,12 @@ Added for GPUs that are not connected to a deployment (free notebook GPUs, rente
 | ID | Requirement | Status |
 | --- | --- | --- |
 | E-1 | A completed reconstruction can export a **training package** (accepted frames, COLMAP model in text form, `manifest.json` with SHA-256 of every file, README), stored as a hashed asset; building it again returns the same asset | Verified |
-| E-2 | A Colab and Kaggle notebook (generated from `scripts/training_notebook/`) verifies the package, trains Splatfacto with orientation, centring and scaling off so the splat stays in the reconstruction's frame, converts back using `dataparser_transforms.json` if needed, checks alignment, and produces `splat.ply` and `training_info.json` | Helper code verified; **the training commands have never run on a GPU** |
+| E-2 | A Colab and Kaggle notebook (generated from `scripts/training_notebook/`) verifies the package, trains Splatfacto with orientation, centring and scaling off so the splat stays in the reconstruction's frame, converts back using `dataparser_transforms.json` if needed, checks alignment, and produces `splat.ply` and `training_info.json` | Verified once on a free Colab T4 (7 November 2026, nerfstudio 1.1.5, Python 3.13): trained, exported, passed the alignment check and imported |
 | E-3 | **Import** validates the PLY (binary little-endian, Gaussian properties, finite values, size matching the header, at most 15 million Gaussians), and **refuses a splat not in the reconstruction's frame**: the median distance from sparse points to the nearest Gaussian must be at most 5% of the scene spread and the splat's spread at least half the sparse points' (no upper limit, because Gaussians reach background the sparse points missed), with the measurements returned | Verified |
 | E-4 | `training_info.json` is checked: its job must match, and its package hash must match the one Parallel issued; unknown fields are ignored | Verified |
 | E-5 | An accepted splat becomes a **new scene revision**; earlier revisions and the untrained layer are unchanged. It is recorded with provenance `imported`, labelled *trained outside Parallel*, with the trainer, GPU, settings, importer, alignment result, and a note that it is appearance only. No quality state is granted by importing | Verified |
 | E-6 | The exact same file cannot be imported twice into one scene; an audit event records each import | Verified |
+| E-7 | A person with edit access can create an **access code** for one job, so the notebook downloads the package and sends the splat back itself. The code works only for that job's package download and splat import, is not a sign-in token, expires (24 hours by default), can be revoked, is stored only as a SHA-256, re-checks its creator's edit access on every use, and is audited; the import is recorded as by the creator | Verified against a running server; not yet run from Colab |
 
 ---
 
@@ -733,10 +734,10 @@ One Google Cloud VM (`e2-standard-4`: 4 vCPU, 16 GB, no GPU; Ubuntu 24.04; 100 G
 | Metrics | 17 | Registry integrity; evacuation, operations and collision metrics; comparison rules |
 | Engines | 36 | Real reference workflows; file-exchange packaging and import; safe archive extraction; every engine has an adapter and complete capability record |
 | Core | 8 | Migrations equal the models; S3 storage against an emulator; restore filtering |
-| API | 81 | Authentication, open access mode, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction; external training and splat import; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
+| API | 88 | Authentication, open access mode, isolation, roles; uploads; revisions; run lifecycle with real engines; honest refusals; file exchange; quotas; reconstruction including frame-size limits; external training, splat import and access codes; comparisons, reviews, reports; CrashLens; optimisation; the assistant including Gemini; demonstrations; backup and restore; the admin command |
 | Simulation worker | 3 | Dispatch, cancellation killing the engine, recovery of a lost heartbeat |
 | Results worker | 5 | Chart scales, table twins, logo byte-identity |
-| **Python total** | **197** | |
+| **Python total** | **204** | |
 | Browser (Playwright) | 18 | Workflow end to end, access boundaries, external-training panel, accessibility in both colour schemes; any console error fails the test |
 
 ### 16.3 Engine verification

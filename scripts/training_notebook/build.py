@@ -42,8 +42,16 @@ This notebook turns a **training package** from Parallel into a trained Gaussian
 nerfstudio's *Splatfacto* (the trainer Parallel's own GPU worker uses), and prepares the result for
 **Import trained splat** in Parallel.
 
-**What you need:** the training package `.zip` (Parallel: Captures, reconstruction job, *Train on a free GPU*).
 **Runtime:** Runtime, Change runtime type, choose a **GPU** (T4 is enough).
+
+**The quick way:** in Parallel, open the reconstruction job (Captures), expand *Train on a free GPU* and choose
+**Create access code**. Paste the code into step 0 below, then choose **Runtime, Run all** and leave the page
+open. The notebook downloads the training package from Parallel, trains, checks the result and sends the splat
+straight back; it appears in Parallel as a new scene revision. The code works only for that one reconstruction
+and expires after a day.
+
+**Without a code:** leave step 0 empty. Step 4 asks for the training package `.zip` (*Download training
+package* on the job), and step 8 downloads `splat.ply` and `training_info.json` for **Import trained splat**.
 
 **Rough time on a free T4 (an estimate, not a measurement):** a package of 150 to 240 frames trains for
 15,000 iterations in about 25 to 45 minutes, plus a one-off 15 to 30 minutes the first time while gsplat
@@ -53,6 +61,10 @@ as soon as it is ready.
 **What this notebook will not do:** it does not change the reconstruction's scale or orientation, and it
 does not make the splat a measurement. A splat is how the place looks; Parallel keeps it separate from
 the geometry used for simulation.
+"""),
+        code("""
+# 0. Access code from Parallel (optional; see above). Paste the whole code between the quotes.
+PARALLEL_CODE = ""  # @param {type:"string"}
 """),
         code("""
 # 1. Check the GPU
@@ -74,13 +86,17 @@ print("nerfstudio", md_.version("nerfstudio"))
         md("## 3. The helper code (tested in the Parallel repository; do not edit)"),
         code(tools),
         code("""
-# 4. Upload the training package (.zip). In Colab, a file chooser appears; on Kaggle or Drive,
-#    set PACKAGE_ZIP to the file's path instead, for example "/kaggle/input/my-data/parallel-training-xxxx.zip".
+# 4. Get the training package (.zip): from Parallel with the access code, or by upload. In Colab without a code
+#    a file chooser appears; on Kaggle or Drive, set PACKAGE_ZIP to the file's path instead, for example
+#    "/kaggle/input/my-data/parallel-training-xxxx.zip".
 import os, shutil, zipfile
 from pathlib import Path
 
 PACKAGE_ZIP = None  # e.g. "/content/drive/MyDrive/parallel-training-xxxx.zip"
-if PACKAGE_ZIP is None:
+if PARALLEL_CODE.strip():
+    print("Downloading the training package from Parallel...")
+    PACKAGE_ZIP = str(fetch_package(PARALLEL_CODE, "/content/parallel-training.zip"))
+elif PACKAGE_ZIP is None:
     from google.colab import files
     up = files.upload()
     PACKAGE_ZIP = next(iter(up))
@@ -156,7 +172,7 @@ if not check["passed"]:
 print("PASS: the splat lines up with the reconstruction.")
 """),
         code("""
-# 8. Save and download: upload BOTH files to Parallel with "Import trained splat"
+# 8. Save, then send the splat to Parallel (with an access code) or download both files for "Import trained splat"
 import json
 OUTDIR = Path("/content/parallel_splat")
 shutil.rmtree(OUTDIR, ignore_errors=True)
@@ -172,18 +188,29 @@ info = {
 }
 (OUTDIR / "training_info.json").write_text(json.dumps(info, indent=1))
 print("splat.ply:", round((OUTDIR / "splat.ply").stat().st_size / 1e6, 1), "MB")
-try:
-    from google.colab import files
-    files.download(str(OUTDIR / "splat.ply"))
-    files.download(str(OUTDIR / "training_info.json"))
-except ImportError:
-    print("Download both files from", OUTDIR)
+SENT = None
+if PARALLEL_CODE.strip():
+    try:
+        SENT = send_splat(PARALLEL_CODE, OUTDIR / "splat.ply", OUTDIR / "training_info.json")
+        print(f"Imported into Parallel: {SENT['gaussians']:,} Gaussians, new scene revision {SENT['scene_revision_id']}.")
+        print("Open the reconstruction job in Parallel and choose Load beside 'Gaussian splat (trained outside Parallel)'.")
+    except Exception as exc:  # keep the result: fall back to downloading it
+        print(exc)
+        print("Downloading both files instead, so the training is not lost; import them on the job in Parallel.")
+if SENT is None:
+    try:
+        from google.colab import files
+        files.download(str(OUTDIR / "splat.ply"))
+        files.download(str(OUTDIR / "training_info.json"))
+    except ImportError:
+        print("Download both files from", OUTDIR)
 """),
         md("""
 ## Back in Parallel
 
-Open the project's **Captures** page, find the reconstruction job, choose **Import trained splat**, and select
-`splat.ply` together with `training_info.json`. Parallel checks the file, records who imported it and from what
+With an access code the splat is already imported: open the project's **Captures** page, find the
+reconstruction job and follow the link to the new scene revision. Without one, find the job, choose **Import
+trained splat**, and select `splat.ply` together with `training_info.json`. Parallel checks the file, records who imported it and from what
 training, and adds it to the scene as a new revision. Your original untrained visual stays in the scene.
 """),
     ]

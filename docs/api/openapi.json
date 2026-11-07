@@ -8687,6 +8687,279 @@
     }
    }
   },
+  "/api/v1/reconstructions/{job_id}/training-codes": {
+   "post": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Create Code",
+    "description": "Create an access code for this job's training notebook. The code is returned once and never again.",
+    "operationId": "create_code_api_v1_reconstructions__job_id__training_codes_post",
+    "parameters": [
+     {
+      "name": "job_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Job Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "List Codes",
+    "operationId": "list_codes_api_v1_reconstructions__job_id__training_codes_get",
+    "parameters": [
+     {
+      "name": "job_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Job Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/training-codes/{code_id}": {
+   "delete": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Revoke Code",
+    "operationId": "revoke_code_api_v1_training_codes__code_id__delete",
+    "parameters": [
+     {
+      "name": "code_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Code Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/training-access/package": {
+   "get": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Package For Code",
+    "description": "The training package of the code's job (the same stored, hashed archive as a manual download).",
+    "operationId": "package_for_code_api_v1_training_access_package_get",
+    "parameters": [
+     {
+      "name": "X-Parallel-Training-Code",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Parallel-Training-Code"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/training-access/import-splat": {
+   "post": {
+    "tags": [
+     "external-training"
+    ],
+    "summary": "Import For Code",
+    "description": "Import the trained splat into the code's job, acting for the code's creator.",
+    "operationId": "import_for_code_api_v1_training_access_import_splat_post",
+    "parameters": [
+     {
+      "name": "X-Parallel-Training-Code",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Parallel-Training-Code"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_import_for_code_api_v1_training_access_import_splat_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/metrics": {
    "get": {
     "tags": [
@@ -9239,6 +9512,32 @@
      "supplied_provenance"
     ],
     "title": "Body_external_result_api_v1_runs__run_id__external_result_post"
+   },
+   "Body_import_for_code_api_v1_training_access_import_splat_post": {
+    "properties": {
+     "splat": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Splat"
+     },
+     "training_info": {
+      "anyOf": [
+       {
+        "type": "string",
+        "contentMediaType": "application/octet-stream"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Training Info"
+     }
+    },
+    "type": "object",
+    "required": [
+     "splat"
+    ],
+    "title": "Body_import_for_code_api_v1_training_access_import_splat_post"
    },
    "Body_import_splat_api_v1_reconstructions__job_id__import_splat_post": {
     "properties": {

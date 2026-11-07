@@ -11,7 +11,7 @@ organisation and project roles, and case assignment for CrashLens records. Error
 runs, reports) is asynchronous: the create call returns a job record, and progress is available by
 polling or as server-sent events on the `/events` endpoints.
 
-141 operations in 18 areas.
+146 operations in 18 areas.
 
 ## Assets
 
@@ -109,7 +109,12 @@ polling or as server-sent events on the `/events` endpoints.
 | --- | --- | --- |
 | GET | `/api/v1/external-training/notebook` | Notebook |
 | POST | `/api/v1/reconstructions/{job_id}/import-splat` | Import Splat |
+| GET | `/api/v1/reconstructions/{job_id}/training-codes` | List Codes |
+| POST | `/api/v1/reconstructions/{job_id}/training-codes` | Create Code |
 | POST | `/api/v1/reconstructions/{job_id}/training-package` | Training Package |
+| POST | `/api/v1/training-access/import-splat` | Import For Code |
+| GET | `/api/v1/training-access/package` | Package For Code |
+| DELETE | `/api/v1/training-codes/{code_id}` | Revoke Code |
 
 ## Meta
 

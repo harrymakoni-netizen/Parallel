@@ -136,6 +136,21 @@ class ReconstructionJob(IdMixin, TimestampMixin, Base):
     created_by: Mapped[str | None] = fk("app_user.id", ondelete="SET NULL", nullable=True)
 
 
+class TrainingAccessCode(IdMixin, TimestampMixin, Base):
+    """A code that lets a notebook on a borrowed GPU fetch one job's training package and import a splat into
+    that job, acting for the person who created it. Only a hash of the code is stored; it expires and can
+    be revoked, and every use re-checks the creator's access to the project."""
+
+    __tablename__ = "training_access_code"
+    job_id: Mapped[str] = fk("reconstruction_job.id")
+    project_id: Mapped[str] = fk("project.id")
+    created_by: Mapped[str] = fk("app_user.id")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 # ============================================================ scenes
 class Scene(IdMixin, TimestampMixin, Base):
     __tablename__ = "scene"

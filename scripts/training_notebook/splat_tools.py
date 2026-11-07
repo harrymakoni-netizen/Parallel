@@ -107,6 +107,58 @@ def make_downscaled_images(root, factor: int) -> int:
     return written
 
 
+CODE_HEADER = "X-Parallel-Training-Code"
+
+
+def parse_access_code(code: str) -> tuple[str, str]:
+    """Split an access code from Parallel ("https://your-parallel-site#ptk_...") into the site and the token."""
+    code = (code or "").strip()
+    site, sep, token = code.rpartition("#")
+    if not sep or not token.startswith("ptk_") or not site.startswith(("https://", "http://")):
+        raise ValueError("That is not a Parallel access code. Copy the whole code from the reconstruction job "
+                         "(it starts with your Parallel address and contains '#ptk_').")
+    return site.rstrip("/"), token
+
+
+def _refusal(resp) -> str:
+    try:
+        err = resp.json().get("error", {})
+        return f"{err.get('code', resp.status_code)}: {err.get('message', resp.text[:300])}"
+    except ValueError:
+        return f"HTTP {resp.status_code}: {resp.text[:300]}"
+
+
+def fetch_package(code: str, dest) -> Path:
+    """Download the job's training package from Parallel using the access code. Returns the zip's path."""
+    import requests
+
+    site, token = parse_access_code(code)
+    dest = Path(dest)
+    with requests.get(f"{site}/api/v1/training-access/package", headers={CODE_HEADER: token}, stream=True,
+                      timeout=(30, 600)) as r:
+        if r.status_code != 200:
+            raise RuntimeError("Parallel refused the download. " + _refusal(r))
+        with open(dest, "wb") as f:
+            for chunk in r.iter_content(1 << 20):
+                f.write(chunk)
+    return dest
+
+
+def send_splat(code: str, splat_path, info_path) -> dict:
+    """Import the trained splat into the job in Parallel using the access code. Returns Parallel's answer."""
+    import requests
+
+    site, token = parse_access_code(code)
+    with open(splat_path, "rb") as s, open(info_path, "rb") as i:
+        r = requests.post(f"{site}/api/v1/training-access/import-splat", headers={CODE_HEADER: token},
+                          files={"splat": ("splat.ply", s, "application/octet-stream"),
+                                 "training_info": ("training_info.json", i, "application/json")},
+                          timeout=(30, 1800))
+    if r.status_code != 201:
+        raise RuntimeError("Parallel did not import the splat. " + _refusal(r))
+    return r.json()
+
+
 def verify_package(root) -> dict:
     """Check every file of an unzipped training package against its manifest. Returns the manifest."""
     root = Path(root)

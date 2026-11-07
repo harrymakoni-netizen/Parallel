@@ -17,6 +17,29 @@ Kaggle, or a rented card), train there, and bring the splat back. Nothing about 
 
 ## The steps
 
+### The quick way: an access code
+
+1. **Reconstruct as usual** (below, step 1).
+2. **Open the job**, expand **Train the Gaussian splat on a free GPU**, choose **Download notebook** and
+   **Create access code**. The code is shown once; copy it.
+3. **In Colab**, upload the notebook, choose a **GPU** runtime, paste the code into **step 0**, then choose
+   **Runtime → Run all** and leave the page open.
+4. The notebook downloads the training package from Parallel, trains, checks the alignment and sends the splat
+   back. It is imported exactly like a manual upload (below), recorded as imported by the person who created
+   the code. Reload the job and open the new scene revision. If sending fails, the notebook downloads both
+   files instead so the training is not lost.
+
+What the code can and cannot do, since it leaves Parallel and runs on someone else's machine:
+
+- it works for **one reconstruction job** and only for two requests: downloading that job's training package
+  and importing a splat into that job. It is not a sign-in token and opens nothing else;
+- it **expires** after 24 hours (`PARALLEL_TRAINING_CODE_HOURS`) and can be **revoked** on the job;
+- only a SHA-256 of it is stored, so it is shown once;
+- every use re-checks that its creator still has edit access to the project, and is audited
+  (`reconstruction.training_package_fetched`; the import's `scene.splat_imported` event names the code).
+
+### By hand
+
 1. **Reconstruct as usual.** Upload the capture and start a reconstruction. With no GPU worker, the training
    stage is *skipped* and the job completes with the untrained initialisation.
 2. **Open the job** under *Captures → Reconstruction jobs* and expand **Train the Gaussian splat on a free GPU**.
@@ -82,7 +105,7 @@ Availability and limits change; check each service's current terms.
   as are the import, its refusals and the access rules, against a real COLMAP reconstruction. The web panel, both downloads
   and a refused import have a browser test (`apps/web/e2e/external-training.spec.ts`); a successful import and loading the
   splat into the scene were checked by hand in a browser.
-- **The training commands themselves have not been run on a GPU.** Their options were checked against the source of nerfstudio 1.1.5 (the version pip installs today): every option exists, and turning off orientation, centring and scaling gives an identity transform. That check found one fault, now fixed: with a downscale factor, nerfstudio stops to ask on the terminal whether to shrink the frames, which nobody can answer in a notebook, so the notebook now prepares `images_<factor>/` itself before training.
+- **The notebook has been run once end to end on a free Google Colab T4 (7 November 2026; Python 3.13, torch 2.14 with CUDA 13, nerfstudio 1.1.5, gsplat 1.4.0): 15,000 iterations, about 146,000 Gaussians, alignment median distance 0.63% of the scene's spread, imported and loaded in the scene.** That run found and fixed four faults: the compile running out of memory, child-process output not shown, open3d missing on Python 3.13, and a spread limit that refused a correctly placed splat. The access-code route (step 0) is tested against a running Parallel server, but has not yet been run from Colab. Earlier, before any GPU run, the options were checked against the source of nerfstudio 1.1.5 (the version pip installs today): every option exists, and turning off orientation, centring and scaling gives an identity transform. That check found one fault, now fixed: with a downscale factor, nerfstudio stops to ask on the terminal whether to shrink the frames, which nobody can answer in a notebook, so the notebook now prepares `images_<factor>/` itself before training.
 - Google Colab now runs Python 3.13. nerfstudio 1.1.5 installs there, but one of its dependencies, open3d, has no build for Python 3.13. Training does not need it; nerfstudio's exporter imports it without using it for splats, so the notebook adds a placeholder module (any real use of open3d raises an error). The notebook also prints nerfstudio's output as it runs, because Colab does not show a child process's output, and repeats the last lines if a step fails.
 - In addition: They use nerfstudio's documented Splatfacto and
   COLMAP data-parser options (orientation, centring and scale switched off so the splat stays in the
@@ -102,6 +125,11 @@ Availability and limits change; check each service's current terms.
 
 | Method and path | Purpose |
 | --- | --- |
+| `POST /api/v1/reconstructions/{job_id}/training-codes` | Create an access code (returned once) and build the package; needs edit access |
+| `GET /api/v1/reconstructions/{job_id}/training-codes` | The job's codes and their state (never the code itself) |
+| `DELETE /api/v1/training-codes/{code_id}` | Revoke a code |
+| `GET /api/v1/training-access/package` | The package, for the code in the `X-Parallel-Training-Code` header |
+| `POST /api/v1/training-access/import-splat` | Import, as `import-splat` below, for the code in the header |
 | `POST /api/v1/reconstructions/{job_id}/training-package` | Build (or return) the job's training package asset; needs edit access |
 | `GET /api/v1/external-training/notebook` | The Colab/Kaggle notebook |
 | `POST /api/v1/reconstructions/{job_id}/import-splat` | Multipart `splat` (.ply) and optional `training_info` (.json); returns the new scene revision and the alignment check. Errors: `splat_invalid`, `splat_not_aligned` (with the measurements), `package_mismatch`, `training_info_invalid`, `already_imported`, `reconstruction_not_ready` |

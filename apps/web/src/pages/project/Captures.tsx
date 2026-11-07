@@ -197,6 +197,60 @@ interface SplatImport {
   alignment_check: { median_distance_fraction_of_spread: number; spread_ratio_splat_to_sparse: number };
 }
 
+interface TrainingCode { id: string; state: "active" | "expired" | "revoked"; created_at: string; expires_at: string; last_used_at: string | null; token?: string }
+
+/** A code that lets the notebook fetch this job's package and send the splat back, so no files move by hand. */
+function AccessCodes({ job, children }: { job: ReconJob; children?: React.ReactNode }) {
+  const qc = useQueryClient();
+  const key = ["training-codes", job.id];
+  const codes = useQuery({ queryKey: key, queryFn: () => api.get<TrainingCode[]>(`/reconstructions/${job.id}/training-codes`) });
+  const [copied, setCopied] = useState(false);
+  const create = useMutation({
+    mutationFn: () => api.post<TrainingCode>(`/reconstructions/${job.id}/training-codes`),
+    onSuccess: () => { setCopied(false); qc.invalidateQueries({ queryKey: key }); },
+  });
+  const revoke = useMutation({
+    mutationFn: (id: string) => api.del<TrainingCode>(`/training-codes/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+  // the code carries this site's address so the notebook knows where to connect
+  const code = create.data?.token ? `${window.location.origin}#${create.data.token}` : "";
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); } catch { setCopied(false); }
+  };
+  const active = (codes.data ?? []).filter((c) => c.state === "active");
+  return (
+    <div className="stack" style={{ marginBottom: 10 }}>
+      <div className="small"><strong>Quick way:</strong> create an access code, paste it into step 0 of the notebook, then choose <em>Runtime, Run all</em> in Colab. The notebook downloads the package from Parallel and sends the trained splat straight back. The code works only for this reconstruction and expires after a day.</div>
+      <div className="row">
+        <button className="btn btn-small btn-primary" onClick={() => create.mutate()} disabled={create.isPending}>{create.isPending ? "Preparing the package…" : "Create access code"}</button>
+        {children}
+      </div>
+      <ErrorNote error={create.error ?? revoke.error} />
+      {code && (
+        <div className="note" role="status">
+          <label className="small" htmlFor={`code-${job.id}`}>Access code (shown only now; keep it private)</label>
+          <div className="row">
+            <input id={`code-${job.id}`} readOnly value={code} onFocus={(e) => e.target.select()} style={{ flex: 1, fontFamily: "var(--font-mono, monospace)" }} />
+            <button className="btn btn-small" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+          </div>
+          <div className="muted small">Expires {fmtDate(create.data!.expires_at)}. When the notebook finishes, reload this page and <Link to="../scene">open the scene</Link>.</div>
+        </div>
+      )}
+      {active.length > 0 && (
+        <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
+          {active.map((c) => (
+            <li key={c.id}>
+              <StatusBadge status="ready" label="Active code" /> created {fmtDate(c.created_at)}, expires {fmtDate(c.expires_at)}{c.last_used_at ? `, last used ${fmtDate(c.last_used_at)}` : ", not used yet"}{" "}
+              <button className="btn btn-small" onClick={() => revoke.mutate(c.id)} disabled={revoke.isPending}>Revoke</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Train the splat on a free or rented GPU outside Parallel, then import it as a new scene revision. */
 function ExternalTraining({ job }: { job: ReconJob }) {
   const pid = useProjectId();
@@ -239,14 +293,17 @@ function ExternalTraining({ job }: { job: ReconJob }) {
   return (
     <details style={{ marginTop: 10 }}>
       <summary><strong>Train the Gaussian splat on a free GPU</strong> <span className="muted small">(this reconstruction has only the untrained initialisation)</span></summary>
+      <AccessCodes job={job}>
+        <button className="btn btn-small" onClick={() => notebook.mutate()} disabled={notebook.isPending}>Download notebook</button>
+      </AccessCodes>
+      <div className="small"><strong>Or by hand:</strong></div>
       <ol className="small" style={{ paddingLeft: 18 }}>
         <li>Download the training package: the frames and COLMAP model of this reconstruction, with a manifest of their hashes.</li>
-        <li>Download the notebook, open it in Google Colab (or Kaggle) with a GPU runtime, and run it. It uploads nothing to Parallel.</li>
+        <li>Download the notebook (above), open it in Google Colab (or Kaggle) with a GPU runtime, and run it with step 0 left empty. It then sends nothing to Parallel.</li>
         <li>Import the <code>splat.ply</code> and <code>training_info.json</code> it produces. Parallel checks that the splat lines up with this reconstruction and adds it to the scene as a new revision, recorded as trained outside Parallel.</li>
       </ol>
       <div className="row">
         <button className="btn btn-small" onClick={() => pkg.mutate()} disabled={pkg.isPending}>{pkg.isPending ? "Preparing…" : "Download training package"}</button>
-        <button className="btn btn-small" onClick={() => notebook.mutate()} disabled={notebook.isPending}>Download notebook</button>
       </div>
       <ErrorNote error={pkg.error ?? notebook.error} />
       <div className="row" style={{ marginTop: 8 }}>

@@ -207,7 +207,16 @@ def _read_info(upload: UploadFile | None, job: ReconstructionJob, package: Sourc
 def import_splat(job_id: str, user: CurrentUser, db: DB, splat: UploadFile = File(...),
                  training_info: UploadFile | None = File(None)):
     """Attach a Gaussian splat trained outside Parallel to the reconstruction's scene as a new revision."""
-    job = _completed_job(db, user, job_id, Action.edit)
+    return import_into(db, user, _completed_job(db, user, job_id, Action.edit), splat, training_info)
+
+
+def import_into(db, user, job: ReconstructionJob, splat: UploadFile, training_info: UploadFile | None,
+                via: dict | None = None) -> dict:
+    """Validate, check alignment and add the splat as a new scene revision, acting for ``user``.
+
+    ``via`` describes how the file arrived when it was not uploaded by the person directly (an access code
+    used by a training notebook); it is recorded in the audit event.
+    """
     filename = Path(splat.filename or "splat.ply").name
     if not filename.lower().endswith(".ply"):
         raise ApiError(422, "splat_invalid", "Only .ply Gaussian splat files can be imported")
@@ -270,7 +279,8 @@ def import_splat(job_id: str, user: CurrentUser, db: DB, splat: UploadFile = Fil
                                 parent_id=cur.id)
     audit(db, action="scene.splat_imported", object_type="scene_revision", object_id=rev.id, actor_id=user.id,
           project_id=job.project_id, details={"job": job.id, "asset": asset.id, "sha256": asset.sha256,
-                                              "gaussians": summary.count, "alignment": check, "training": info})
+                                              "gaussians": summary.count, "alignment": check, "training": info,
+                                              **({"via": via} if via else {})})
     return {"scene_id": scene.id, "scene_revision_id": rev.id, "visual_id": visual.id, "asset_id": asset.id,
             "gaussians": summary.count, "alignment_check": check, "training": info}
 

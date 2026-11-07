@@ -33,6 +33,7 @@ from .routers import (
     runs,
     scenarios,
     scenes,
+    training_access,
 )
 
 API_VERSION = "1.0.0"
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
         reviews,
         assistant,
         external_training,
+        training_access,
     ):
         api.include_router(r.router)
 

@@ -387,3 +387,153 @@ def test_notebook_open3d_placeholder_imports_and_fails_loudly_on_use(tmp_path):
     assert "imported" in out.stdout and "refused: open3d is not installed: open3d.io.read_point_cloud" in out.stdout, out.stderr
     notebook = (REPO / "services/api/src/parallel_api/resources/parallel_splat_training.ipynb").read_text()
     assert "ensure_open3d_placeholder()" in notebook
+
+
+# ------------------------------------------------------------------ access codes for the notebook
+CODE = "X-Parallel-Training-Code"
+
+
+def _code(client, world, rec, who="editor"):
+    r = client.post(f"/api/v1/reconstructions/{rec['job']['id']}/training-codes", headers=world[who].h)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_access_codes_need_edit_access_and_are_shown_once(client, world, reconstruction):
+    jid = reconstruction["job"]["id"]
+    assert client.post(f"/api/v1/reconstructions/{jid}/training-codes", headers=world["viewer"].h).status_code == 403
+    assert client.post(f"/api/v1/reconstructions/{jid}/training-codes",
+                       headers=world["outsider"].h).status_code in (403, 404)
+    made = _code(client, world, reconstruction)
+    assert made["token"].startswith("ptk_") and made["state"] == "active" and made["header"] == CODE
+    listed = client.get(f"/api/v1/reconstructions/{jid}/training-codes", headers=world["editor"].h).json()
+    assert any(c["id"] == made["id"] for c in listed) and all("token" not in c for c in listed)
+    # only a hash is stored
+    from parallel_core.db import session_scope
+    from parallel_core.models import TrainingAccessCode
+
+    with session_scope() as db:
+        row = db.get(TrainingAccessCode, made["id"])
+        assert made["token"] not in row.token_hash and len(row.token_hash) == 64
+
+
+def test_access_code_fetches_the_package_and_imports_for_its_creator(client, world, reconstruction):
+    job = reconstruction["job"]
+    made = _code(client, world, reconstruction)
+    r = client.get("/api/v1/training-access/package", headers={CODE: made["token"]})
+    assert r.status_code == 200 and r.headers["content-type"] == "application/zip"
+    package = client.get(f"/api/v1/assets/{made['package_asset_id']}", headers=world["editor"].h).json()
+    import hashlib
+
+    assert hashlib.sha256(r.content).hexdigest() == package["sha256"]
+    manifest = json.loads(zipfile.ZipFile(io.BytesIO(r.content)).read("manifest.json"))
+    assert manifest["job_id"] == job["id"]
+    info = {"job_id": job["id"], "package_manifest_sha256": package["inspection"]["manifest_sha256"],
+            "trainer": "nerfstudio splatfacto", "gpu": "Tesla T4", "iterations": 7000}
+    files = {"splat": ("splat.ply", _splat(_sparse(job), seed=61, n=6000), "application/octet-stream"),
+             "training_info": ("training_info.json", json.dumps(info).encode(), "application/json")}
+    imp = client.post("/api/v1/training-access/import-splat", headers={CODE: made["token"]}, files=files)
+    assert imp.status_code == 201, imp.text
+    out = imp.json()
+    assert out["training"]["verified_package"] == "yes"
+    rev = client.get(f"/api/v1/scene-revisions/{out['scene_revision_id']}", headers=world["editor"].h).json()
+    new = next(v for v in rev["content"]["visual_assets"] if v["id"] == out["visual_id"])
+    assert new["provenance"]["kind"] == "imported" and new["provenance"]["recorded_by"] == world["editor"].id
+    from sqlalchemy import select
+
+    from parallel_core.db import session_scope
+    from parallel_core.models import AuditEvent
+
+    with session_scope() as db:
+        ev = db.scalar(select(AuditEvent).where(AuditEvent.action == "scene.splat_imported",
+                                                AuditEvent.object_id == out["scene_revision_id"]))
+        assert ev.actor_id == world["editor"].id and ev.details["via"] == {"training_code": made["id"]}
+    listed = client.get(f"/api/v1/reconstructions/{job['id']}/training-codes", headers=world["editor"].h).json()
+    assert next(c for c in listed if c["id"] == made["id"])["last_used_at"] is not None
+
+
+def test_access_codes_are_refused_when_missing_wrong_revoked_or_expired(client, world, reconstruction):
+    jid = reconstruction["job"]["id"]
+    assert client.get("/api/v1/training-access/package").status_code == 401
+    assert client.get("/api/v1/training-access/package", headers={CODE: "ptk_not-a-real-code"}).status_code == 401
+    made = _code(client, world, reconstruction)
+    # not a sign-in token: it opens nothing else
+    assert client.get(f"/api/v1/reconstructions/{jid}",
+                      headers={"Authorization": f"Bearer {made['token']}"}).status_code == 401
+    # a viewer cannot revoke; the creator can, and the code stops working
+    assert client.delete(f"/api/v1/training-codes/{made['id']}", headers=world["viewer"].h).status_code == 403
+    assert client.delete(f"/api/v1/training-codes/{made['id']}", headers=world["editor"].h).json()["state"] == "revoked"
+    r = client.get("/api/v1/training-access/package", headers={CODE: made["token"]})
+    assert r.status_code == 401 and r.json()["error"]["code"] == "invalid_training_code"
+    # an expired code is refused the same way
+    from datetime import timedelta
+
+    from parallel_core.db import session_scope, utcnow
+    from parallel_core.models import TrainingAccessCode
+
+    old = _code(client, world, reconstruction)
+    with session_scope() as db:
+        db.get(TrainingAccessCode, old["id"]).expires_at = utcnow() - timedelta(minutes=1)
+    assert client.get("/api/v1/training-access/package", headers={CODE: old["token"]}).status_code == 401
+    files = {"splat": ("splat.ply", _splat(_sparse(reconstruction["job"]), seed=62, n=3000), "application/octet-stream")}
+    assert client.post("/api/v1/training-access/import-splat", headers={CODE: old["token"]}, files=files).status_code == 401
+
+
+def test_access_code_stops_working_when_its_creator_loses_access(client, world, reconstruction):
+    pid = reconstruction["project"]["id"]
+    member = client.post(f"/api/v1/projects/{pid}/members", headers=world["admin"].h,
+                         json={"user_id": world["reviewer"].id, "role": "editor"})
+    assert member.status_code in (200, 201), member.text
+    made = _code(client, world, reconstruction, who="reviewer")
+    assert client.get("/api/v1/training-access/package", headers={CODE: made["token"]}).status_code == 200
+    client.post(f"/api/v1/projects/{pid}/members", headers=world["admin"].h,
+                json={"user_id": world["reviewer"].id, "role": "viewer"})
+    assert client.get("/api/v1/training-access/package", headers={CODE: made["token"]}).status_code == 403
+
+
+def test_notebook_helpers_fetch_and_send_through_a_running_server(world, reconstruction, tmp_path):
+    """The notebook's own download and upload code, against Parallel served over real HTTP."""
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    from parallel_api.main import create_app
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(create_app(), host="127.0.0.1", port=port, log_level="warning"))
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            time.sleep(0.05)
+        from fastapi.testclient import TestClient
+
+        with TestClient(create_app()) as c:
+            made = _code(c, world, reconstruction)
+        code = f"http://127.0.0.1:{port}/#{made['token']}"
+        with pytest.raises(ValueError):
+            tools.parse_access_code(made["token"])  # the site address is part of the code
+        zpath = tools.fetch_package(code, tmp_path / "package.zip")
+        root = tmp_path / "capture"
+        with zipfile.ZipFile(zpath) as z:
+            z.extractall(root)
+        manifest = tools.verify_package(root)
+        assert manifest["job_id"] == reconstruction["job"]["id"]
+        ply = tmp_path / "splat.ply"
+        ply.write_bytes(_splat(tools.read_points3d(root / "colmap/sparse/0/points3D.txt"), seed=63, n=5000))
+        info = tmp_path / "training_info.json"
+        info.write_text(json.dumps({"job_id": manifest["job_id"], "package_manifest_sha256": manifest["manifest_sha256"],
+                                    "trainer": "nerfstudio splatfacto"}))
+        sent = tools.send_splat(code, ply, info)
+        assert sent["alignment_check"]["passed"] and sent["training"]["verified_package"] == "yes"
+        with pytest.raises(RuntimeError, match="already_imported"):
+            tools.send_splat(code, ply, info)  # Parallel's refusal reaches the notebook with its reason
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)

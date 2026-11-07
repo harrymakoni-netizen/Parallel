@@ -12,7 +12,7 @@ Python 3.13.16 (and Python 3.12 inside the worker image).
 ## Running the checks
 
 ```bash
-uv run pytest                                     # 197 tests
+uv run pytest                                     # 204 tests
 uv run ruff check .
 uv run python scripts/engine_verification.py      # cross-check record for every managed engine
 (cd apps/web && npm run typecheck && npm run build)

@@ -141,6 +141,7 @@ The ones that matter most in production:
 | `PARALLEL_HEARTBEAT_TIMEOUT_S`, `PARALLEL_MAX_RUN_ATTEMPTS` | Recovery of runs whose worker stopped |
 | `PARALLEL_ENGINE_THREADS` | Threads each engine process may use |
 | `PARALLEL_OPEN_ACCESS` (and its `_MAX_UPLOAD_BYTES`, `_STORAGE_CAP_BYTES`, `_MAX_ACTIVE_RECONSTRUCTIONS` limits) | Off by default. When true, no sign-in is needed: requests without a token are served as a limited shared guest ([open access](#open-access-no-sign-in)) |
+| `PARALLEL_TRAINING_CODE_HOURS` | 24. How long an access code for the splat-training notebook stays valid ([external training](external-training.md#the-quick-way-an-access-code)) |
 | `PARALLEL_ASSISTANT_PROVIDER` (`anthropic`, `gemini`, `disabled`), `PARALLEL_ANTHROPIC_API_KEY`, `PARALLEL_GEMINI_API_KEY`, `PARALLEL_GEMINI_MODEL` | The optional assistant; without a key it reports itself unavailable. See [assistant providers](assistant-providers.md) |
 
 **Sign-in.** Local accounts (scrypt-hashed passwords, signed session tokens) are the supported mode.
