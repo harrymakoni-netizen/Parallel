@@ -62,6 +62,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "blur_relative": 0.35,  # also reject frames below 35% of the median sharpness
     "duplicate_hash_distance": 3,
     "max_frames": 240,
+    # Longest side of an extracted frame in pixels (0 keeps the original). Full 4K frames make COLMAP's CPU
+    # feature extraction and matching several times slower and the training package far larger, while
+    # Splatfacto trains at half size by default anyway, so 1920 loses little.
+    "max_frame_size": 1920,
     "train_gaussians": True,
     "splatfacto_preset": "refined",  # default | aggressive | refined (reference pipeline presets)
     "registered_fraction_required": 0.6,
@@ -171,6 +175,10 @@ def frame_extraction(ctx: PipelineContext) -> dict:
         f.unlink()
     inputs = ctx.workdir / "inputs"
     rate = float(ctx.settings["frame_rate"])
+    longest = int(ctx.settings.get("max_frame_size") or 0)
+    # never enlarge: the box is the smaller of the frame and the limit, and the aspect ratio is kept
+    shrink = (f",scale='min(iw,{longest})':'min(ih,{longest})':force_original_aspect_ratio=decrease"
+              ":force_divisible_by=2") if longest > 0 else ""
     count = 0
     for a in ctx.assets:
         src = inputs / a.id / a.filename
@@ -185,7 +193,7 @@ def frame_extraction(ctx: PipelineContext) -> dict:
                     "-i",
                     str(src),
                     "-vf",
-                    f"fps={rate}",
+                    f"fps={rate}{shrink}",
                     "-q:v",
                     "2",
                     str(frames / f"{stem}_%05d.jpg"),
@@ -196,12 +204,15 @@ def frame_extraction(ctx: PipelineContext) -> dict:
             with Image.open(src) as im:
                 from PIL import ImageOps
 
-                ImageOps.exif_transpose(im).convert("RGB").save(frames / (Path(a.filename).stem + ".png"))
+                img = ImageOps.exif_transpose(im).convert("RGB")
+                if longest > 0 and max(img.size) > longest:
+                    img.thumbnail((longest, longest), Image.LANCZOS)
+                img.save(frames / (Path(a.filename).stem + ".png"))
     names = sorted(p.name for p in frames.iterdir())
     count = len(names)
     if count < 3:
         raise PipelineError(f"only {count} frames available; at least 3 are needed")
-    return {"frames": names, "frame_rate": rate}
+    return {"frames": names, "frame_rate": rate, "max_frame_size": longest}
 
 
 def _laplacian_variance(gray: np.ndarray) -> float:

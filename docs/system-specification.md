@@ -202,7 +202,7 @@ failure or cancellation. Progress is available as server-sent events.
 | 11 | Scene publication | A scene revision with visual assets, transforms, measurements, quality states and provenance |
 
 **Defaults** (`pipeline.py`): 2 frames per second; blur floor 15 and 35% of the median sharpness; duplicate hash distance 3; at most **240** frames (more are
-thinned evenly); at least 60% of frames registered; tolerance 0.05 m with its stated purpose; Splatfacto preset `refined`.
+thinned evenly); frames shrunk to at most 1920 pixels on the long side (never enlarged); at least 60% of frames registered; tolerance 0.05 m with its stated purpose; Splatfacto preset `refined`.
 Synthetic demonstration captures are labelled `synthetic` in their provenance.
 
 ### 4.3 Outputs and quality

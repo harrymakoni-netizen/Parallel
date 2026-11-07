@@ -88,3 +88,38 @@ def test_reconstruction_pipeline_scale_and_measurement_checks(client, world, cap
     assert st2["pose_estimation"]["data"] == pe  # checkpointed stage not re-run
     revs = client.get(f"/api/v1/scenes/{rev['scene_id']}/revisions", headers=ed).json()
     assert len(revs) == 2
+
+
+def test_frame_extraction_limits_frame_size_without_enlarging(tmp_path):
+    """Large frames are shrunk to the longest-side limit (keeping the aspect ratio); small ones are untouched."""
+    import subprocess
+
+    from PIL import Image
+
+    from parallel_reconstruction.pipeline import (
+        DEFAULT_SETTINGS,
+        InputAsset,
+        PipelineContext,
+        frame_extraction,
+    )
+
+    inputs = tmp_path / "inputs"
+    assets = []
+    for i, size in enumerate(("3840x2160", "640x480")):
+        d = inputs / f"v{i}"
+        d.mkdir(parents=True)
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", f"testsrc=size={size}:rate=10",
+                        "-t", "1", "-y", str(d / f"clip{i}.mp4")], check=True)
+        assets.append(InputAsset(f"v{i}", f"clip{i}.mp4", "video", None, "", {}))
+    d = inputs / "img"
+    d.mkdir()
+    Image.new("RGB", (3000, 4000), (90, 120, 150)).save(d / "tall.jpg")
+    assets.append(InputAsset("img", "tall.jpg", "image", None, "", {}))
+    ctx = PipelineContext(job_id="j", project_id="p", workdir=tmp_path, settings=dict(DEFAULT_SETTINGS),
+                          assets=assets, fetch=lambda k, p: p, log=tmp_path / "log.txt")
+    out = frame_extraction(ctx)
+    sizes = {n: Image.open(tmp_path / "frames" / n).size for n in out["frames"]}
+    assert out["max_frame_size"] == 1920
+    assert {s for n, s in sizes.items() if n.startswith("clip0")} == {(1920, 1080)}
+    assert {s for n, s in sizes.items() if n.startswith("clip1")} == {(640, 480)}
+    assert sizes["tall.png"] == (1440, 1920)

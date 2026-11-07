@@ -57,7 +57,7 @@ failure or cancellation, and records its timing, log and outputs.
 | 11 | Scene publication | A scene revision with the visual assets, transforms, quality states and provenance |
 
 Settings (defaults in `pipeline.py`): `frame_rate` 2 frames/s, `blur_threshold` 15, `blur_relative`
-0.35, `duplicate_hash_distance` 3, `max_frames` 240, `registered_fraction_required` 0.6,
+0.35, `duplicate_hash_distance` 3, `max_frames` 240, `max_frame_size` 1920 (longest side of an extracted frame in pixels, never enlarged; 0 keeps the original), `registered_fraction_required` 0.6,
 `splatfacto_preset` `refined`, `tolerance_abs_m` 0.05 with its purpose, and `reference_source`.
 
 ## Setup
