@@ -81,6 +81,7 @@ Availability and limits change; check each service's current terms.
   and a refused import have a browser test (`apps/web/e2e/external-training.spec.ts`); a successful import and loading the
   splat into the scene were checked by hand in a browser.
 - **The training commands themselves have not been run on a GPU.** Their options were checked against the source of nerfstudio 1.1.5 (the version pip installs today): every option exists, and turning off orientation, centring and scaling gives an identity transform. That check found one fault, now fixed: with a downscale factor, nerfstudio stops to ask on the terminal whether to shrink the frames, which nobody can answer in a notebook, so the notebook now prepares `images_<factor>/` itself before training.
+- Google Colab now runs Python 3.13. nerfstudio 1.1.5 installs there, but one of its dependencies, open3d, has no build for Python 3.13. Training does not need it; nerfstudio's exporter imports it without using it for splats, so the notebook adds a placeholder module (any real use of open3d raises an error). The notebook also prints nerfstudio's output as it runs, because Colab does not show a child process's output, and repeats the last lines if a step fails.
 - In addition: They use nerfstudio's documented Splatfacto and
   COLMAP data-parser options (orientation, centring and scale switched off so the splat stays in the
   reconstruction's frame). If your nerfstudio version names an option differently, adjust the command in step 6 of

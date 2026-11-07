@@ -342,3 +342,32 @@ def test_notebook_prepares_downscaled_frames_so_nerfstudio_never_stops_to_ask(tm
     assert tools.make_downscaled_images(tmp_path, 2) == 0  # idempotent
     notebook = (REPO / "services/api/src/parallel_api/resources/parallel_splat_training.ipynb").read_text()
     assert "make_downscaled_images(ROOT, DOWNSCALE)" in notebook
+
+
+def test_notebook_shows_command_output_and_the_end_of_it_on_failure(capsys):
+    """Colab hides a child process's output, so the notebook prints it itself and repeats the end on failure."""
+    import sys
+
+    tools.run_streaming([sys.executable, "-c", "print('step one'); print('step two')"])
+    assert "step one" in capsys.readouterr().out
+    with pytest.raises(RuntimeError, match="exit code 3") as err:
+        tools.run_streaming([sys.executable, "-c", "import sys; print('the real cause'); sys.exit(3)"])
+    assert "the real cause" in str(err.value)
+    notebook = (REPO / "services/api/src/parallel_api/resources/parallel_splat_training.ipynb").read_text()
+    assert "run_streaming(CMD)" in notebook and "subprocess.run(CMD" not in notebook
+
+
+def test_notebook_open3d_placeholder_imports_and_fails_loudly_on_use(tmp_path):
+    """open3d has no Python 3.13 build; nerfstudio's exporter imports it without using it for splats. The
+    placeholder must import, allow attribute access at import time, and refuse any real call."""
+    import subprocess
+    import sys
+
+    assert tools.ensure_open3d_placeholder(site_dir=tmp_path) is True
+    code = ("import open3d as o3d; t = o3d.geometry.PointCloud; print('imported')\n"
+            "try:\n    o3d.io.read_point_cloud('x.ply')\nexcept RuntimeError as e:\n    print('refused:', e)")
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=tmp_path,
+                         env={"PYTHONPATH": str(tmp_path)})
+    assert "imported" in out.stdout and "refused: open3d is not installed: open3d.io.read_point_cloud" in out.stdout, out.stderr
+    notebook = (REPO / "services/api/src/parallel_api/resources/parallel_splat_training.ipynb").read_text()
+    assert "ensure_open3d_placeholder()" in notebook

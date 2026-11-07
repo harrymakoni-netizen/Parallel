@@ -118,17 +118,23 @@ CMD = [
     "--assume-colmap-world-coordinate-convention", "False",
 ]
 print(" ".join(CMD))
-subprocess.run(CMD, check=True)
+run_streaming(CMD)
 FINISHED = datetime.datetime.now(datetime.timezone.utc).isoformat()
 print(f"Training took {(time.time() - t0) / 60:.1f} minutes")
 """),
         code("""
 # 7. Export, then bring the splat back into the reconstruction's frame and check it
 import glob
+# open3d has no build for Python 3.13; nerfstudio's exporter imports it but splat export never uses it
+if ensure_open3d_placeholder():
+    print("open3d is not available for this Python version; added a placeholder (splat export does not use it)")
+os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+if "FINISHED" not in globals():  # training was run from another cell
+    FINISHED = datetime.datetime.now(datetime.timezone.utc).isoformat()
 cfg = sorted(glob.glob("/content/outputs/**/config.yml", recursive=True), key=os.path.getmtime)[-1]
 EXPORT = Path("/content/export")
 shutil.rmtree(EXPORT, ignore_errors=True)
-subprocess.run(["ns-export", "gaussian-splat", "--load-config", cfg, "--output-dir", str(EXPORT)], check=True)
+run_streaming(["ns-export", "gaussian-splat", "--load-config", cfg, "--output-dir", str(EXPORT)])
 raw = sorted(EXPORT.glob("*.ply"))[0]
 data, _ = read_ply(raw)
 data, dropped = drop_non_finite(data)

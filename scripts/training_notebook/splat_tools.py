@@ -27,6 +27,60 @@ def sha256_file(path) -> str:
     return h.hexdigest()
 
 
+def run_streaming(cmd: list[str], tail: int = 80) -> None:
+    """Run a command, printing its output line by line as it arrives.
+
+    In Colab a child process's output does not appear in the cell, so a failure would show only an exit code.
+    On failure this raises with the last lines of output, which is where nerfstudio reports the cause.
+    """
+    import collections
+    import subprocess
+
+    last: collections.deque[str] = collections.deque(maxlen=tail)
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1) as proc:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+            last.append(line)
+    if proc.returncode:
+        raise RuntimeError(f"{cmd[0]} stopped with exit code {proc.returncode}. Its last lines were:\n" + "".join(last))
+
+
+OPEN3D_PLACEHOLDER = '''"""Placeholder written by the Parallel training notebook: open3d has no build for this Python version.
+
+nerfstudio imports open3d in its exporter even though Gaussian splat export never uses it. Any real use raises.
+"""
+
+
+class _Missing:
+    def __init__(self, name):
+        self._name = name
+
+    def __getattr__(self, attr):
+        return _Missing(self._name + "." + attr)
+
+    def __call__(self, *args, **kwargs):
+        raise RuntimeError("open3d is not installed: " + self._name + " cannot be used")
+
+
+def __getattr__(attr):
+    return _Missing("open3d." + attr)
+'''
+
+
+def ensure_open3d_placeholder(site_dir=None) -> bool:
+    """Install the placeholder when open3d is missing (it has no Python 3.13 build). Returns True if written."""
+    import importlib.util
+    import site
+
+    if site_dir is None and importlib.util.find_spec("open3d") is not None:
+        return False
+    target = Path(site_dir or site.getsitepackages()[0]) / "open3d"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "__init__.py").write_text(OPEN3D_PLACEHOLDER)
+    return True
+
+
 def make_downscaled_images(root, factor: int) -> int:
     """Write images_<factor>/ next to images/, each frame shrunk by an integer factor (floor rounding).
 
